@@ -1,0 +1,341 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  PROFESOR
+  ALUMNO
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum SessionStatus {
+  PROGRAMADA
+  EN_CURSO
+  COMPLETADA
+  CANCELADA
+}
+
+enum BookingStatus {
+  RESERVADA
+  CANCELADA
+  ASISTIO
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  COMPLETADO
+  FALLIDO
+  REEMBOLSADO
+}
+
+enum TokenSource {
+  COMPRA
+  ASIGNACION
+  BONO
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String
+  role      UserRole
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relaciones
+  ownedGyms      Gym[]          @relation("GymOwner")
+  gymMemberships GymMember[]
+  taughtSessions ClassSession[] @relation("SessionProfessor")
+  bookings       Booking[]
+  waitlist       Waitlist[]
+  payments       Payment[]
+  auditLogs      AuditLog[]     @relation("AuditActor")
+  tokenWallets   TokenWallet[]
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+model Gym {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String   @default("America/Argentina/San_Luis")
+  holidays  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  ownerId String
+  owner   User   @relation("GymOwner", fields: [ownerId], references: [id])
+
+  members      GymMember[]
+  locations    Location[]
+  classTypes   ClassType[]
+  templates    ScheduleTemplate[]
+  sessions     ClassSession[]
+  plans        PackagePlan[]
+  payments     Payment[]
+  auditLogs    AuditLog[]
+  tokenWallets TokenWallet[]
+
+  @@map("gyms")
+}
+
+model GymMember {
+  id        String   @id @default(cuid())
+  userId    String
+  gymId     String
+  roleInGym UserRole
+  joinedAt  DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id])
+  gym  Gym  @relation(fields: [gymId], references: [id])
+
+  @@unique([userId, gymId])
+  @@map("gym_members")
+}
+
+model Location {
+  id      String  @id @default(cuid())
+  name    String
+  address String?
+  gymId   String
+
+  // Relaciones
+  gym   Gym    @relation(fields: [gymId], references: [id])
+  rooms Room[]
+
+  @@map("locations")
+}
+
+model Room {
+  id         String @id @default(cuid())
+  name       String
+  capacity   Int
+  locationId String
+
+  // Relaciones
+  location  Location           @relation(fields: [locationId], references: [id])
+  templates ScheduleTemplate[]
+  sessions  ClassSession[]
+
+  @@map("rooms")
+}
+
+model ClassType {
+  id          String @id @default(cuid())
+  name        String
+  color       String @default("#3B82F6")
+  durationMin Int
+  gymId       String
+
+  // Relaciones
+  gym       Gym                @relation(fields: [gymId], references: [id])
+  templates ScheduleTemplate[]
+  sessions  ClassSession[]
+
+  @@map("class_types")
+}
+
+model ScheduleTemplate {
+  id          String   @id @default(cuid())
+  gymId       String
+  profId      String
+  roomId      String
+  classTypeId String
+  daysOfWeek  Int[] // 1=Lunes ... 7=Domingo
+  startTime   String // "HH:MM"
+  durationMin Int
+  capacity    Int
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  gym       Gym       @relation(fields: [gymId], references: [id])
+  room      Room      @relation(fields: [roomId], references: [id])
+  classType ClassType @relation(fields: [classTypeId], references: [id])
+
+  @@map("schedule_templates")
+}
+
+model ClassSession {
+  id          String        @id @default(cuid())
+  gymId       String
+  profId      String
+  roomId      String
+  classTypeId String
+  startAt     DateTime
+  endAt       DateTime
+  capacity    Int
+  status      SessionStatus @default(PROGRAMADA)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relaciones
+  gym       Gym        @relation(fields: [gymId], references: [id])
+  professor User       @relation("SessionProfessor", fields: [profId], references: [id])
+  room      Room       @relation(fields: [roomId], references: [id])
+  classType ClassType  @relation(fields: [classTypeId], references: [id])
+  bookings  Booking[]
+  waitlist  Waitlist[]
+
+  @@map("class_sessions")
+}
+
+model PackagePlan {
+  id           String   @id @default(cuid())
+  gymId        String
+  name         String
+  tokens       Int
+  validityDays Int
+  price        Decimal  @db.Decimal(10, 2)
+  rules        Json // { cancelBeforeHours: 24, noShowPenalty: true, transferable: false }
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relaciones
+  gym         Gym          @relation(fields: [gymId], references: [id])
+  tokenGrants TokenGrant[]
+  payments    Payment[]
+
+  @@map("package_plans")
+}
+
+model TokenWallet {
+  id      String @id @default(cuid())
+  userId  String
+  gymId   String
+  balance Int    @default(0)
+
+  // Relaciones
+  user   User         @relation(fields: [userId], references: [id])
+  gym    Gym          @relation(fields: [gymId], references: [id])
+  grants TokenGrant[]
+
+  @@unique([userId, gymId])
+  @@map("token_wallets")
+}
+
+model TokenGrant {
+  id        String      @id @default(cuid())
+  walletId  String
+  planId    String?
+  tokens    Int
+  expiresAt DateTime?
+  source    TokenSource
+  createdAt DateTime    @default(now())
+
+  // Relaciones
+  wallet   TokenWallet  @relation(fields: [walletId], references: [id])
+  plan     PackagePlan? @relation(fields: [planId], references: [id])
+  bookings Booking[]
+
+  @@map("token_grants")
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  sessionId    String
+  alumnoId     String
+  status       BookingStatus @default(RESERVADA)
+  tokenGrantId String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relaciones
+  session    ClassSession @relation(fields: [sessionId], references: [id])
+  alumno     User         @relation(fields: [alumnoId], references: [id])
+  tokenGrant TokenGrant?  @relation(fields: [tokenGrantId], references: [id])
+
+  @@unique([sessionId, alumnoId])
+  @@map("bookings")
+}
+
+model Waitlist {
+  id        String   @id @default(cuid())
+  sessionId String
+  alumnoId  String
+  position  Int
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  session ClassSession @relation(fields: [sessionId], references: [id])
+  alumno  User         @relation(fields: [alumnoId], references: [id])
+
+  @@unique([sessionId, alumnoId])
+  @@map("waitlist")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String
+  gymId       String
+  planId      String
+  provider    String        @default("mercadopago")
+  amount      Decimal       @db.Decimal(10, 2)
+  currency    String        @default("ARS")
+  status      PaymentStatus @default(PENDIENTE)
+  providerRef String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relaciones
+  user User        @relation(fields: [userId], references: [id])
+  gym  Gym         @relation(fields: [gymId], references: [id])
+  plan PackagePlan @relation(fields: [planId], references: [id])
+
+  @@map("payments")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  gymId     String? // si el log está asociado a un Gym
+  entity    String // nombre de la entidad (User, Gym, etc.)
+  entityId  String // id de la entidad
+  action    String // CREATE, UPDATE, DELETE
+  diff      Json?
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  actor User @relation("AuditActor", fields: [actorId], references: [id])
+  gym   Gym? @relation(fields: [gymId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // INFO, WARNING, SUCCESS, ERROR, CANCELLATION, REMINDER
+  metadata  Json?    // Datos adicionales como sessionId, className, etc.
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
