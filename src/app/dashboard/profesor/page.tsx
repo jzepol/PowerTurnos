@@ -362,6 +362,39 @@ export default function ProfesorDashboard() {
     }
   }
 
+  const handleGenerateFromTemplate = async (templateId: string, weeks: number, startDate: string) => {
+    try {
+      setError('')
+      
+      const response = await fetch('/api/schedule-templates/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId,
+          weeks: parseInt(weeks.toString()),
+          startDate: new Date(startDate)
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setShowGenerateFromTemplate(false)
+        setSuccessMessage(`¡${result.data.generated} clases generadas exitosamente!`)
+        // Recargar sesiones para mostrar las nuevas clases
+        if (selectedGymId) {
+          await fetchSessions(selectedGymId)
+        }
+        setError('')
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || 'Error al generar clases')
+      }
+    } catch (error) {
+      console.error('Error al generar clases:', error)
+      setError('Error al generar clases')
+    }
+  }
+
   const handleCreateClass = async (classData: any) => {
     try {
       setIsCreatingClass(true)
@@ -621,6 +654,16 @@ export default function ProfesorDashboard() {
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                  </svg>
                  Nueva Clase
+               </button>
+               
+               <button
+                 onClick={() => setShowGenerateFromTemplate(true)}
+                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-purple-500 hover:bg-purple-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+               >
+                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                 </svg>
+                 Generar desde Plantilla
                </button>
                
                <button
