@@ -657,7 +657,7 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Gimnasio</label>
-                    <select name="gymId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="gymId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white">
                       <option value="">Seleccionar gimnasio</option>
                       {gyms.map(gym => (
                         <option key={gym.id} value={gym.id}>{gym.name}</option>
@@ -667,7 +667,7 @@ export default function AdminDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Alumno</label>
-                    <select name="userId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="userId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white">
                       <option value="">Seleccionar alumno</option>
                       {users.filter(u => u.role === 'ALUMNO').map(user => (
                         <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
@@ -677,12 +677,12 @@ export default function AdminDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Cantidad de Tokens</label>
-                    <input type="number" name="tokens" min="1" max="100" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="number" name="tokens" min="1" max="100" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Razón (opcional)</label>
-                    <input type="text" name="reason" placeholder="Ej: Bono por buen comportamiento" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="text" name="reason" placeholder="Ej: Bono por buen comportamiento" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white" />
                   </div>
                 </div>
                 
@@ -725,7 +725,7 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Usuario</label>
-                    <select name="userId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="userId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white">
                       <option value="">Seleccionar usuario</option>
                       {unassignedUsers.map(user => (
                         <option key={user.id} value={user.id}>{user.name} ({user.email}) - {user.role}</option>
@@ -735,7 +735,7 @@ export default function AdminDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Gimnasio</label>
-                    <select name="gymId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="gymId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white">
                       <option value="">Seleccionar gimnasio</option>
                       {gyms.map(gym => (
                         <option key={gym.id} value={gym.id}>{gym.name}</option>

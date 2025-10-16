@@ -19,3 +19,59 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Estilos para mejorar la legibilidad de inputs */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+select,
+textarea {
+  color: #1f2937 !important; /* text-gray-800 */
+  background-color: #ffffff !important;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="number"]::placeholder,
+input[type="tel"]::placeholder,
+input[type="url"]::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important; /* text-gray-400 */
+  opacity: 1 !important;
+}
+
+/* Estilos para inputs con focus */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+select:focus,
+textarea:focus {
+  color: #111827 !important; /* text-gray-900 */
+  background-color: #ffffff !important;
+}
+
+/* Estilos específicos para selects */
+select option {
+  color: #1f2937 !important; /* text-gray-800 */
+  background-color: #ffffff !important;
+}
+
+/* Estilos para inputs deshabilitados */
+input[type="text"]:disabled,
+input[type="email"]:disabled,
+input[type="password"]:disabled,
+input[type="number"]:disabled,
+input[type="tel"]:disabled,
+input[type="url"]:disabled,
+select:disabled,
+textarea:disabled {
+  color: #6b7280 !important; /* text-gray-500 */
+  background-color: #f9fafb !important; /* bg-gray-50 */
+}

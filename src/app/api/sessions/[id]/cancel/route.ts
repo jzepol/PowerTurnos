@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Cancelar clase (solo PROFESOR)
 export const POST = withAuth(async (request: NextRequest, user: any) => {
@@ -25,9 +26,9 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       )
     }
 
-    console.log('🚀 API Cancelar Clase - INICIANDO POST')
-    console.log('🆔 API Cancelar Clase - Session ID:', sessionId)
-    console.log('👤 API Cancelar Clase - Usuario:', user.id, user.role)
+    logger.debug('🚀 API Cancelar Clase - INICIANDO POST', );
+    logger.debug('🆔 API Cancelar Clase - Session ID:', sessionId);
+    logger.debug('👤 API Cancelar Clase - Usuario:', user.id, user.role);
 
     // Verificar que la sesión existe y pertenece al profesor
     const session = await prisma.classSession.findUnique({
@@ -49,7 +50,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     })
 
     if (!session) {
-      console.log('❌ API Cancelar Clase - Sesión no encontrada')
+      logger.debug('❌ API Cancelar Clase - Sesión no encontrada', );
       return NextResponse.json(
         { success: false, error: 'Sesión no encontrada' },
         { status: 404 }
@@ -57,7 +58,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     }
 
     if (session.profId !== user.id) {
-      console.log('❌ API Cancelar Clase - No tiene permisos para cancelar esta clase')
+      logger.debug('❌ API Cancelar Clase - No tiene permisos para cancelar esta clase', );
       return NextResponse.json(
         { success: false, error: 'No tienes permisos para cancelar esta clase' },
         { status: 403 }
@@ -65,15 +66,15 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     }
 
     if (session.status !== 'PROGRAMADA') {
-      console.log('❌ API Cancelar Clase - Solo se pueden cancelar clases programadas')
+      logger.debug('❌ API Cancelar Clase - Solo se pueden cancelar clases programadas', );
       return NextResponse.json(
         { success: false, error: 'Solo se pueden cancelar clases programadas' },
         { status: 400 }
       )
     }
 
-    console.log('✅ API Cancelar Clase - Permisos verificados, procediendo con cancelación')
-    console.log('📊 API Cancelar Clase - Reservas activas encontradas:', session.bookings.length)
+    logger.debug('✅ API Cancelar Clase - Permisos verificados, procediendo con cancelación', );
+    logger.debug('📊 API Cancelar Clase - Reservas activas encontradas:', session.bookings.length);
 
     // Iniciar transacción para cancelar la clase y reembolsar tokens
     const result = await prisma.$transaction(async (tx) => {
@@ -83,7 +84,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
         data: { status: 'CANCELADA' }
       })
 
-      console.log('✅ API Cancelar Clase - Sesión cancelada:', updatedSession.id)
+      logger.debug('✅ API Cancelar Clase - Sesión cancelada:', updatedSession.id);
 
       // 2. Cancelar todas las reservas activas
       const updatedBookings = await tx.booking.updateMany({
@@ -94,7 +95,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
         data: { status: 'CANCELADA' }
       })
 
-      console.log('✅ API Cancelar Clase - Reservas canceladas:', updatedBookings.count)
+      logger.debug('✅ API Cancelar Clase - Reservas canceladas:', updatedBookings.count);
 
       // 3. Reembolsar tokens a todos los alumnos
       const refundPromises = session.bookings.map(async (booking) => {
@@ -114,9 +115,9 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
               }
             }
           })
-          console.log('💰 API Cancelar Clase - Token reembolsado a:', booking.alumno.name)
+          logger.debug('💰 API Cancelar Clase - Token reembolsado a:', booking.alumno.name);
         } else {
-          console.log('⚠️ API Cancelar Clase - No se encontró wallet para:', booking.alumno.name)
+          logger.debug('⚠️ API Cancelar Clase - No se encontró wallet para:', booking.alumno.name);
         }
       })
 
@@ -129,8 +130,8 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       }
     })
 
-    console.log('🎉 API Cancelar Clase - Proceso completado exitosamente')
-    console.log('📊 API Cancelar Clase - Resumen:', result)
+    logger.debug('🎉 API Cancelar Clase - Proceso completado exitosamente', );
+    logger.debug('📊 API Cancelar Clase - Resumen:', result);
 
     return NextResponse.json({
       success: true,

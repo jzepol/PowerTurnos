@@ -3,6 +3,7 @@ import { withAuth, withRole } from '@/lib/auth'
 import { BookingService } from '@/services/booking.service'
 import { AuthError } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Crear una reserva (solo ALUMNO)
 export const POST = withRole(['ALUMNO'])(async (request: NextRequest, user: any) => {
@@ -46,7 +47,7 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
         )
       }
       
-      console.log('API Bookings - Profesor solicitando reservas para sesión:', sessionId)
+      logger.debug('API Bookings - Profesor solicitando reservas para sesión:', sessionId);
       
       // Verificar que el profesor tenga acceso a esta clase
       const session = await prisma.classSession.findUnique({

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getWeekDaysWithNames, getNextWeek, getPreviousWeek, formatDate, formatTime } from '@/lib/date-utils'
+import { logger } from '@/lib/logger'
 
 interface Session {
   id: string
@@ -90,7 +91,7 @@ interface User {
 export default function ProfesorDashboard() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [sessions, setSessions] = useState<Session[]>([])
-  const [templates, setTemplates] = useState<Template[]>([])
+  const [templates, setTemplates] = useState<any[]>([])
   const [classTypes, setClassTypes] = useState<ClassType[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [locations, setLocations] = useState<Location[]>([])
@@ -101,6 +102,7 @@ export default function ProfesorDashboard() {
   const [activeTab, setActiveTab] = useState('calendar')
   const [showCreateTemplate, setShowCreateTemplate] = useState(false)
   const [showCreateClass, setShowCreateClass] = useState(false)
+  const [showGenerateFromTemplate, setShowGenerateFromTemplate] = useState(false)
   const [showAssignTokens, setShowAssignTokens] = useState(false)
   const [showCreateClassType, setShowCreateClassType] = useState(false)
   const [showRegisterStudent, setShowRegisterStudent] = useState(false)
@@ -125,7 +127,7 @@ export default function ProfesorDashboard() {
   // Efecto para actualización automática cada 30 segundos
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('Actualización automática del dashboard del profesor...')
+      logger.systemEvent('Actualización automática del dashboard del profesor')
       if (selectedGymId) {
         fetchSessions(selectedGymId)
       }
@@ -1670,17 +1672,17 @@ export default function ProfesorDashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Nombre Completo</label>
-                    <input type="text" name="name" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Nombre y Apellido" />
+                    <input type="text" name="name" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white" placeholder="Nombre y Apellido" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" name="email" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="alumno@ejemplo.com" />
+                    <input type="email" name="email" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white" placeholder="alumno@ejemplo.com" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-                    <input type="password" name="password" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Mínimo 6 caracteres" />
+                    <input type="password" name="password" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white" placeholder="Mínimo 6 caracteres" />
                   </div>
                 </div>
                 

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { AuthError } from '@/lib/auth'
 import { TokenService } from './token.service'
+import { logger } from '@/lib/logger'
 
 export class BookingService {
   // Helper function para acceder de manera segura a las reglas del plan
@@ -552,7 +553,7 @@ export class BookingService {
       })
 
       // Notificar al usuario (implementar en el futuro)
-      console.log(`Usuario ${waitlistEntry.alumnoId} promovido desde lista de espera`)
+      logger.debug('Usuario ${waitlistEntry.alumnoId} promovido desde lista de espera', );
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatDate, formatTime } from '@/lib/date-utils'
+import { logger } from '@/lib/logger'
 
 interface Session {
   id: string
@@ -109,7 +110,7 @@ export default function AlumnoDashboard() {
   // Generar días de la semana
   const generateWeekDays = (startDate: Date) => {
     const days = []
-    console.log('Generando semana desde:', startDate.toISOString())
+    logger.debug('Generando semana desde:', startDate.toISOString())
     
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate)
@@ -696,20 +697,6 @@ export default function AlumnoDashboard() {
               <span className="hidden sm:inline">Mis Reservas</span>
               <span className="sm:hidden">📋</span>
           </button>
-          <button
-              onClick={() => setActiveTab('tokens')}
-              className={`flex items-center px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 ${
-                activeTab === 'tokens'
-                  ? 'bg-blue-600 text-white shadow-md transform scale-105'
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-              }`}
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-              <span className="hidden sm:inline">Mis Tokens</span>
-              <span className="sm:hidden">🪙</span>
-          </button>
           
           <button
             onClick={() => setActiveTab('notifications')}
@@ -1279,47 +1266,6 @@ export default function AlumnoDashboard() {
           </div>
         )}
 
-        {activeTab === 'tokens' && (
-          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <svg className="w-6 h-6 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-              Mis Tokens
-            </h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {Array.isArray(tokenWallets) && tokenWallets.map(wallet => (
-                <div key={wallet.id} className="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-200">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-lg text-gray-900">
-                        {wallet.gym.name}
-                      </h3>
-                      <span className="text-2xl font-bold text-purple-600">
-                        {wallet.balance}
-                      </span>
-                    </div>
-                    
-                    <div className="text-sm text-gray-600 mb-4">
-                      Tokens disponibles
-                    </div>
-
-                    <div className="space-y-2">
-                      {wallet.grants && Array.isArray(wallet.grants) && wallet.grants.slice(0, 3).map(grant => (
-                        <div key={grant.id} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg p-2">
-                          <span className="text-gray-700">{grant.tokens} tokens</span>
-                          <span className="text-gray-500 text-xs">
-                            {new Date(grant.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {activeTab === 'notifications' && (
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">

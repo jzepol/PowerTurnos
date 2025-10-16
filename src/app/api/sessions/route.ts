@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth, withRole } from '@/lib/auth'
 import { SessionService } from '@/services/session.service'
 import { AuthError } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // Obtener sesiones con filtros
 export const GET = withAuth(async (request: NextRequest, user: any) => {
@@ -18,17 +19,17 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
     }
     
-    console.log('API Sessions - Filtros recibidos:', filters)
-    console.log('API Sessions - Usuario:', { id: user.id, role: user.role })
+    logger.debug('API Sessions - Filtros recibidos:', filters);
+    logger.debug('API Sessions - Usuario:', { id: user.id, role: user.role });
     
     // Si es profesor, solo mostrar sus propias sesiones
     if (user.role === 'PROFESOR') {
       filters.profId = user.id
-      console.log('API Sessions - Filtro profId agregado:', user.id)
+      logger.debug('API Sessions - Filtro profId agregado:', user.id);
     }
     
     const sessions = await SessionService.getSessions(filters)
-    console.log('API Sessions - Sesiones encontradas:', sessions.length)
+    logger.debug('API Sessions - Sesiones encontradas:', sessions.length);
     
     return NextResponse.json({
       success: true,

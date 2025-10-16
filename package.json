@@ -12,7 +12,10 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "logs:clean": "node scripts/cleanup-logs.js",
+    "logs:check": "powershell -Command \"Get-ChildItem -Path src -Recurse -Include *.ts,*.tsx | Select-String 'console\\.log' | Measure-Object | Select-Object -ExpandProperty Count\"",
+    "logs:fix-imports": "node scripts/fix-logger-imports.js"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",

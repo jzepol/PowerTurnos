@@ -1,33 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Cancelar reserva (ALUMNO) - Método PATCH para actualizar estado
 export const PATCH = withAuth(async (request: NextRequest, user: any) => {
   try {
-    console.log('🚀 API Cancelar Reserva - INICIANDO PATCH')
-    console.log('🔍 API Cancelar Reserva - URL completa:', request.url)
+    logger.debug('🚀 API Cancelar Reserva - INICIANDO PATCH', );
+    logger.debug('🔍 API Cancelar Reserva - URL completa:', request.url);
     
     // Extraer el ID de la ruta dinámica [id]
     const url = new URL(request.url)
     const pathParts = url.pathname.split('/')
     const bookingId = pathParts[pathParts.length - 1]
     
-    console.log('🔗 API Cancelar Reserva - Path parts:', pathParts)
-    console.log('🆔 API Cancelar Reserva - Booking ID extraído de la ruta:', bookingId)
+    logger.debug('🔗 API Cancelar Reserva - Path parts:', pathParts);
+    logger.debug('🆔 API Cancelar Reserva - Booking ID extraído de la ruta:', bookingId);
     
     const body = await request.json()
-    console.log('📦 API Cancelar Reserva - Body recibido:', body)
+    logger.debug('📦 API Cancelar Reserva - Body recibido:', body);
 
     if (!bookingId) {
-      console.log('❌ API Cancelar Reserva - Error: No se encontró bookingId')
+      logger.debug('❌ API Cancelar Reserva - Error: No se encontró bookingId', );
       return NextResponse.json(
         { success: false, error: 'Se requiere bookingId' },
         { status: 400 }
       )
     }
 
-    console.log('✅ API Cancelar Reserva - Datos recibidos:', { bookingId, body, userId: user.id })
+    logger.debug('✅ API Cancelar Reserva - Datos recibidos:', { bookingId, body, userId: user.id });
 
     // Verificar que la reserva existe y pertenece al usuario
     const booking = await prisma.booking.findUnique({
@@ -58,7 +59,7 @@ export const PATCH = withAuth(async (request: NextRequest, user: any) => {
       )
     }
 
-    console.log('🔄 API Cancelar Reserva - Actualizando reserva en la base de datos...')
+    logger.debug('🔄 API Cancelar Reserva - Actualizando reserva en la base de datos...', );
     
     // Actualizar la reserva con el nuevo estado
     const updatedBooking = await prisma.booking.update({
@@ -68,12 +69,12 @@ export const PATCH = withAuth(async (request: NextRequest, user: any) => {
       }
     })
 
-    console.log('✅ API Cancelar Reserva - Reserva actualizada exitosamente:', updatedBooking)
+    logger.debug('✅ API Cancelar Reserva - Reserva actualizada exitosamente:', updatedBooking);
 
     // Reembolsar token al wallet si se cancela
     if (body.status === 'CANCELADA') {
-      console.log('💰 API Cancelar Reserva - Procesando reembolso de token...')
-      console.log('🏟️ API Cancelar Reserva - Gym ID de la sesión:', booking.session.gymId)
+      logger.debug('💰 API Cancelar Reserva - Procesando reembolso de token...', );
+      logger.debug('🏟️ API Cancelar Reserva - Gym ID de la sesión:', booking.session.gymId);
       
       const wallet = await prisma.tokenWallet.findFirst({
         where: {
@@ -82,10 +83,10 @@ export const PATCH = withAuth(async (request: NextRequest, user: any) => {
         }
       })
 
-      console.log('💳 API Cancelar Reserva - Wallet encontrado:', wallet)
+      logger.debug('💳 API Cancelar Reserva - Wallet encontrado:', wallet);
 
       if (wallet) {
-        console.log('💸 API Cancelar Reserva - Actualizando balance del wallet...')
+        logger.debug('💸 API Cancelar Reserva - Actualizando balance del wallet...', );
         await prisma.tokenWallet.update({
           where: { id: wallet.id },
           data: {
@@ -94,15 +95,15 @@ export const PATCH = withAuth(async (request: NextRequest, user: any) => {
             }
           }
         })
-        console.log('✅ API Cancelar Reserva - Token reembolsado exitosamente al wallet:', wallet.id)
+        logger.debug('✅ API Cancelar Reserva - Token reembolsado exitosamente al wallet:', wallet.id);
       } else {
-        console.log('⚠️ API Cancelar Reserva - No se encontró wallet para reembolso')
+        logger.debug('⚠️ API Cancelar Reserva - No se encontró wallet para reembolso', );
       }
     } else {
-      console.log('ℹ️ API Cancelar Reserva - No es cancelación, no se procesa reembolso')
+      logger.debug('ℹ️ API Cancelar Reserva - No es cancelación, no se procesa reembolso', );
     }
 
-    console.log('🎉 API Cancelar Reserva - Proceso completado exitosamente')
+    logger.debug('🎉 API Cancelar Reserva - Proceso completado exitosamente', );
     
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { AuthError } from '@/lib/auth'
 import { generateSessionDates } from '@/lib/date-utils'
+import { logger } from '@/lib/logger'
 
 export class SessionService {
   // Crear una sesión individual
@@ -469,7 +470,7 @@ export class SessionService {
     roomId?: string
     limit?: number
   }) {
-    console.log('SessionService.getSessions - Filtros recibidos:', filters)
+    logger.debug('SessionService.getSessions - Filtros recibidos:', filters);
     
     const where: any = {}
 
@@ -505,7 +506,7 @@ export class SessionService {
       }
     }
 
-    console.log('SessionService.getSessions - Where clause:', JSON.stringify(where, null, 2))
+    logger.debug('SessionService.getSessions - Where clause:', JSON.stringify(where, null, 2);)
 
     const sessions = await prisma.classSession.findMany({
       where,
@@ -545,7 +546,7 @@ export class SessionService {
       ...(filters.limit && { take: filters.limit })
     })
 
-    console.log('SessionService.getSessions - Sesiones encontradas:', sessions.length)
+    logger.debug('SessionService.getSessions - Sesiones encontradas:', sessions.length);
     if (sessions.length > 0) {
       console.log('SessionService.getSessions - Primera sesión:', {
         id: sessions[0].id,

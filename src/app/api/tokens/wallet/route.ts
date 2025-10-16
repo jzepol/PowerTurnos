@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { TokenService } from '@/services/token.service'
 import { AuthError } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 export const GET = withAuth(async (request: NextRequest, user: any) => {
   try {
@@ -15,7 +16,7 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
       )
     }
     
-    console.log('🔍 Buscando wallet para:', { userId: user.id, gymId, userRole: user.role })
+    logger.debug('🔍 Buscando wallet para:', { userId: user.id, gymId, userRole: user.role });
     
     const wallet = await TokenService.getWallet(user.id, gymId)
     

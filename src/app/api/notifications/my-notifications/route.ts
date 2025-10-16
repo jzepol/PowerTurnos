@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Obtener notificaciones del usuario autenticado
 export const GET = withAuth(async (request: NextRequest, user: any) => {
   try {
-    console.log('🚀 API Mis Notificaciones - INICIANDO GET')
-    console.log('👤 API Mis Notificaciones - Usuario:', user.id, user.role)
+    logger.debug('🚀 API Mis Notificaciones - INICIANDO GET', );
+    logger.debug('👤 API Mis Notificaciones - Usuario:', user.id, user.role);
 
     const { searchParams } = new URL(request.url)
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50
@@ -30,7 +31,7 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
       take: limit
     })
 
-    console.log('✅ API Mis Notificaciones - Notificaciones encontradas:', notifications.length)
+    logger.debug('✅ API Mis Notificaciones - Notificaciones encontradas:', notifications.length);
 
     return NextResponse.json({
       success: true,
@@ -50,7 +51,7 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 // Marcar notificación como leída
 export const PATCH = withAuth(async (request: NextRequest, user: any) => {
   try {
-    console.log('🚀 API Marcar Notificación - INICIANDO PATCH')
+    logger.debug('🚀 API Marcar Notificación - INICIANDO PATCH', );
     
     const body = await request.json()
     const { notificationId, markAsRead } = body
@@ -85,7 +86,7 @@ export const PATCH = withAuth(async (request: NextRequest, user: any) => {
       }
     })
 
-    console.log('✅ API Marcar Notificación - Notificación actualizada:', updatedNotification.id)
+    logger.debug('✅ API Marcar Notificación - Notificación actualizada:', updatedNotification.id);
 
     return NextResponse.json({
       success: true,

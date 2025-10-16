@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 // Enviar notificaciones (solo PROFESOR)
 export const POST = withAuth(async (request: NextRequest, user: any) => {
@@ -23,11 +24,11 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       )
     }
 
-    console.log('🚀 API Notificaciones - INICIANDO POST')
-    console.log('🆔 API Notificaciones - Session ID:', sessionId)
-    console.log('💬 API Notificaciones - Mensaje:', message)
-    console.log('📝 API Notificaciones - Tipo:', type)
-    console.log('👤 API Notificaciones - Usuario:', user.id, user.role)
+    logger.debug('🚀 API Notificaciones - INICIANDO POST', );
+    logger.debug('🆔 API Notificaciones - Session ID:', sessionId);
+    logger.debug('💬 API Notificaciones - Mensaje:', message);
+    logger.debug('📝 API Notificaciones - Tipo:', type);
+    logger.debug('👤 API Notificaciones - Usuario:', user.id, user.role);
 
     // Verificar que la sesión existe y pertenece al profesor
     const session = await prisma.classSession.findUnique({
@@ -55,7 +56,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     })
 
     if (!session) {
-      console.log('❌ API Notificaciones - Sesión no encontrada')
+      logger.debug('❌ API Notificaciones - Sesión no encontrada', );
       return NextResponse.json(
         { success: false, error: 'Sesión no encontrada' },
         { status: 404 }
@@ -63,15 +64,15 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     }
 
     if (session.profId !== user.id) {
-      console.log('❌ API Notificaciones - No tiene permisos para esta sesión')
+      logger.debug('❌ API Notificaciones - No tiene permisos para esta sesión', );
       return NextResponse.json(
         { success: false, error: 'No tienes permisos para esta sesión' },
         { status: 403 }
       )
     }
 
-    console.log('✅ API Notificaciones - Permisos verificados')
-    console.log('📊 API Notificaciones - Alumnos a notificar:', session.bookings.length)
+    logger.debug('✅ API Notificaciones - Permisos verificados', );
+    logger.debug('📊 API Notificaciones - Alumnos a notificar:', session.bookings.length);
 
     // Crear notificaciones para todos los alumnos reservados
     const notificationPromises = session.bookings.map(async (booking) => {
@@ -93,14 +94,14 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
         }
       })
 
-      console.log('📨 API Notificaciones - Notificación creada para:', booking.alumno.name)
+      logger.debug('📨 API Notificaciones - Notificación creada para:', booking.alumno.name);
       return notification
     })
 
     const notifications = await Promise.all(notificationPromises)
 
-    console.log('🎉 API Notificaciones - Proceso completado exitosamente')
-    console.log('📊 API Notificaciones - Notificaciones enviadas:', notifications.length)
+    logger.debug('🎉 API Notificaciones - Proceso completado exitosamente', );
+    logger.debug('📊 API Notificaciones - Notificaciones enviadas:', notifications.length);
 
     return NextResponse.json({
       success: true,
