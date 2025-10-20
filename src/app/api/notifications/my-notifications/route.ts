@@ -6,8 +6,8 @@ import { logger } from '@/lib/logger'
 // Obtener notificaciones del usuario autenticado
 export const GET = withAuth(async (request: NextRequest, user: any) => {
   try {
-    logger.debug('🚀 API Mis Notificaciones - INICIANDO GET', );
-    logger.debug('👤 API Mis Notificaciones - Usuario:', user.id, user.role);
+    logger.debug('🚀 API Mis Notificaciones - INICIANDO GET')
+    logger.debug('👤 API Mis Notificaciones - Usuario:', { userId: user.id, role: user.role })
 
     const { searchParams } = new URL(request.url)
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50

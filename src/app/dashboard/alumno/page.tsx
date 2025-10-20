@@ -78,6 +78,7 @@ export default function AlumnoDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('available')
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   
   // Estados para los diálogos interactivos
   const [showBookingDialog, setShowBookingDialog] = useState(false)
@@ -121,11 +122,7 @@ export default function AlumnoDashboard() {
         fullName: date.toLocaleDateString('es-ES', { weekday: 'long' })
       })
       
-      console.log(`Día ${i}:`, {
-        date: date.toISOString(),
-        shortName: date.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase(),
-        fullName: date.toLocaleDateString('es-ES', { weekday: 'long' })
-      })
+      logger.debug(`Día ${i}:`, { date: date.toISOString() })
     }
     return days
   }
@@ -133,22 +130,18 @@ export default function AlumnoDashboard() {
   const weekDays = generateWeekDays(currentWeek)
   
   const goToPreviousWeek = () => {
-    console.log('🔄 Navegando a semana anterior...')
-    console.log('Semana actual:', currentWeek.toISOString())
+    logger.debug('🔄 Navegando a semana anterior...')
     setIsManualNavigation(true)
     const newWeek = new Date(currentWeek)
     newWeek.setDate(currentWeek.getDate() - 7)
-    console.log('Nueva semana:', newWeek.toISOString())
     setCurrentWeek(newWeek)
   }
   
   const goToNextWeek = () => {
-    console.log('🔄 Navegando a semana siguiente...')
-    console.log('Semana actual:', currentWeek.toISOString())
+    logger.debug('🔄 Navegando a semana siguiente...')
     setIsManualNavigation(true)
     const newWeek = new Date(currentWeek)
     newWeek.setDate(currentWeek.getDate() + 7)
-    console.log('Nueva semana:', newWeek.toISOString())
     setCurrentWeek(newWeek)
   }
   
@@ -162,15 +155,7 @@ export default function AlumnoDashboard() {
       // Crear fecha local para el día objetivo (sin zona horaria)
       const targetLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
       
-      // Debug: mostrar fechas para comparación
-      console.log('Comparando fechas:', {
-        sessionStartAt: session.startAt,
-        sessionDate: sessionDate.toISOString(),
-        sessionLocalDate: sessionLocalDate.toISOString(),
-        targetDate: date.toISOString(),
-        targetLocalDate: targetLocalDate.toISOString(),
-        match: sessionLocalDate.getTime() === targetLocalDate.getTime()
-      })
+      // Verificar si la sesión es del día correcto
       
       return sessionLocalDate.getTime() === targetLocalDate.getTime()
     })
@@ -193,14 +178,7 @@ export default function AlumnoDashboard() {
       // Comparar hora (usar hora local)
       const sameHour = sessionStart.getHours() === hours
       
-      console.log('Comparando horario:', {
-        sessionStartAt: session.startAt,
-        sessionHour: sessionStart.getHours(),
-        targetHour: hours,
-        sameDay,
-        sameHour,
-        match: sameDay && sameHour
-      })
+      // Verificar si la sesión es del horario correcto
       
       return sameDay && sameHour
     })
@@ -260,26 +238,30 @@ export default function AlumnoDashboard() {
 
   // Efecto para actualización automática cada 2 minutos (menos agresivo)
   useEffect(() => {
-    if (currentGymId && autoRefreshEnabled) {
+    if (currentGymId && autoRefreshEnabled && !isInitialLoad) {
       const interval = setInterval(() => {
-        console.log('🔄 Actualización automática del dashboard...')
+        logger.debug('🔄 Actualización automática del dashboard...')
         // Solo actualizar si no está refrescando manualmente
         if (!isRefreshing) {
-          fetchDashboardData(currentGymId)
+          fetchDashboardData(currentGymId, false) // No mostrar loading en actualizaciones automáticas
         }
       }, 120000) // 2 minutos (120 segundos)
 
       return () => clearInterval(interval)
     }
-  }, [currentGymId, isRefreshing, autoRefreshEnabled])
+  }, [currentGymId, isRefreshing, autoRefreshEnabled, isInitialLoad])
 
-  // Efecto para actualizar datos cuando cambia la semana
+  // Efecto para actualizar datos cuando cambia la semana (con debounce)
   useEffect(() => {
-    if (currentGymId) {
-      console.log('Semana cambiada, actualizando datos...')
-      fetchDashboardData(currentGymId)
+    if (currentGymId && !isInitialLoad) {
+      const timeoutId = setTimeout(() => {
+        logger.debug('Semana cambiada, actualizando datos...')
+        fetchDashboardData(currentGymId, false) // No mostrar loading en cambio de semana
+      }, 100) // Debounce de 100ms
+
+      return () => clearTimeout(timeoutId)
     }
-  }, [currentWeek, currentGymId])
+  }, [currentWeek, currentGymId, isInitialLoad])
 
   const fetchUserProfile = async () => {
     try {
@@ -292,10 +274,12 @@ export default function AlumnoDashboard() {
           if (data.data.user.gymMemberships && data.data.user.gymMemberships.length > 0) {
             setCurrentGymId(data.data.user.gymMemberships[0].gym.id)
             // Una vez que tenemos el gymId, cargar los datos del dashboard
-            fetchDashboardData(data.data.user.gymMemberships[0].gym.id)
+            await fetchDashboardData(data.data.user.gymMemberships[0].gym.id)
+            setIsInitialLoad(false)
           } else {
             setError('No tienes un gimnasio asignado')
             setIsLoading(false)
+            setIsInitialLoad(false)
           }
             }
           }
@@ -305,9 +289,9 @@ export default function AlumnoDashboard() {
     }
   }
 
-  const fetchDashboardData = async (gymId: string) => {
+  const fetchDashboardData = async (gymId: string, showLoading = true) => {
     try {
-      if (!isRefreshing) {
+      if (showLoading && !isRefreshing) {
         setIsLoading(true)
       }
       setIsRefreshing(true)
@@ -318,28 +302,13 @@ export default function AlumnoDashboard() {
       if (sessionsResponse.ok) {
         const sessionsData = await sessionsResponse.json()
         if (sessionsData.success) {
-          console.log('Sesiones cargadas:', sessionsData.data)
-          
-          // Debug: mostrar fechas de las sesiones
-          sessionsData.data.forEach((session: any, index: number) => {
-            const sessionDate = new Date(session.startAt)
-            console.log(`Sesión ${index + 1}:`, {
-              id: session.id,
-              startAt: session.startAt,
-              parsedDate: sessionDate.toISOString(),
-              localDate: sessionDate.toLocaleDateString('es-ES'),
-              dayOfWeek: sessionDate.getDay(),
-              hours: sessionDate.getHours(),
-              minutes: sessionDate.getMinutes()
-            })
-          })
-          
+          logger.debug('Sesiones cargadas:', { count: sessionsData.data.length })
           setSessions(sessionsData.data)
         } else {
-          console.error('Error en respuesta de sesiones:', sessionsData)
+          logger.error('Error en respuesta de sesiones:', sessionsData)
         }
       } else {
-        console.error('Error HTTP al obtener sesiones:', sessionsResponse.status)
+        logger.error('Error HTTP al obtener sesiones:', { status: sessionsResponse.status })
       }
 
       // Obtener mis reservas
@@ -347,13 +316,13 @@ export default function AlumnoDashboard() {
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json()
         if (bookingsData.success) {
-          console.log('Reservas cargadas:', bookingsData.data)
+          logger.debug('Reservas cargadas:', { count: bookingsData.data.length })
           setMyBookings(bookingsData.data)
         } else {
-          console.error('Error en respuesta de reservas:', bookingsData)
+          logger.error('Error en respuesta de reservas:', bookingsData)
         }
       } else {
-        console.error('Error HTTP al obtener reservas:', bookingsResponse.status)
+        logger.error('Error HTTP al obtener reservas:', { status: bookingsResponse.status })
       }
 
       // Obtener mis wallets de tokens
@@ -366,11 +335,11 @@ export default function AlumnoDashboard() {
         }
       }
 
-      // Obtener mis notificaciones
-      await fetchNotifications()
+      // Obtener mis notificaciones (sin loading adicional)
+      await fetchNotifications(false)
     } catch (error) {
       setError('Error al cargar los datos del dashboard')
-      console.error('Error:', error)
+      logger.error('Error al cargar dashboard:', error)
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
@@ -392,7 +361,7 @@ export default function AlumnoDashboard() {
       })
 
       if (response.ok) {
-        fetchDashboardData(currentGymId!) // Recargar datos
+        fetchDashboardData(currentGymId!, false) // Recargar datos sin loading
         setError('')
       } else {
         const errorData = await response.json()
@@ -410,7 +379,7 @@ export default function AlumnoDashboard() {
       })
 
       if (response.ok) {
-        fetchDashboardData(currentGymId!) // Recargar datos
+        fetchDashboardData(currentGymId!, false) // Recargar datos sin loading
         setError('')
       } else {
         const errorData = await response.json()
@@ -421,22 +390,30 @@ export default function AlumnoDashboard() {
     }
   }
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (showLoading = false) => {
     try {
+      if (showLoading) {
+        setIsRefreshing(true)
+      }
+      
       const response = await fetch('/api/notifications/my-notifications')
       if (response.ok) {
         const notificationsData = await response.json()
         if (notificationsData.success) {
-          console.log('Notificaciones cargadas:', notificationsData.data)
+          logger.debug('Notificaciones cargadas:', { count: notificationsData.data.length })
           setNotifications(notificationsData.data)
         } else {
-          console.error('Error en respuesta de notificaciones:', notificationsData)
+          logger.error('Error en respuesta de notificaciones:', notificationsData)
         }
       } else {
-        console.error('Error HTTP al obtener notificaciones:', response.status)
+        logger.error('Error HTTP al obtener notificaciones:', { status: response.status })
       }
     } catch (error) {
-      console.error('Error al cargar notificaciones:', error)
+      logger.error('Error al cargar notificaciones:', error)
+    } finally {
+      if (showLoading) {
+        setIsRefreshing(false)
+      }
     }
   }
 
@@ -497,7 +474,7 @@ export default function AlumnoDashboard() {
       if (response.ok) {
         setShowBookingDialog(false)
         setSelectedSession(null)
-        fetchDashboardData(currentGymId!) // Recargar datos
+        fetchDashboardData(currentGymId!, false) // Recargar datos sin loading
         setError('')
       } else {
         const errorData = await response.json()
@@ -533,7 +510,7 @@ export default function AlumnoDashboard() {
         setShowCancellationDialog(false)
         setSelectedBooking(null)
         // Recargar datos inmediatamente
-        await fetchDashboardData(currentGymId!)
+        await fetchDashboardData(currentGymId!, false) // No mostrar loading en cancelación
         setError('')
       } else {
         const errorData = await response.json()
@@ -587,7 +564,7 @@ export default function AlumnoDashboard() {
               <button
                 onClick={async () => {
                   try {
-                    console.log('🚀 Dashboard Alumno - Iniciando logout...')
+                    logger.debug('🚀 Dashboard Alumno - Iniciando logout...')
                     
                     const response = await fetch('/api/auth/logout', { 
                       method: 'POST',
@@ -597,15 +574,15 @@ export default function AlumnoDashboard() {
                     const result = await response.json()
                     
                     if (result.success) {
-                      console.log('✅ Dashboard Alumno - Logout exitoso, redirigiendo...')
+                      logger.debug('✅ Dashboard Alumno - Logout exitoso, redirigiendo...')
                       // Redirigir a la página de login
                       window.location.href = '/'
                     } else {
-                      console.error('❌ Dashboard Alumno - Error en logout:', result.error)
+                      logger.error('❌ Dashboard Alumno - Error en logout:', result.error)
                       alert('Error al cerrar sesión')
                     }
                   } catch (error) {
-                    console.error('💥 Dashboard Alumno - Error interno en logout:', error)
+                    logger.error('💥 Dashboard Alumno - Error interno en logout:', error)
                     alert('Error interno al cerrar sesión')
                   }
                 }}
@@ -768,8 +745,8 @@ export default function AlumnoDashboard() {
                 </button>
                 <button
                   onClick={() => {
-                    console.log('Actualización manual del calendario...')
-                    fetchDashboardData(currentGymId!)
+                    logger.debug('Actualización manual del calendario...')
+                    fetchDashboardData(currentGymId!, true) // Mostrar loading en actualización manual
                   }}
                   disabled={isRefreshing}
                   className={`flex items-center px-3 py-2 text-xs sm:text-sm font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all duration-200 hover:scale-105 ${
@@ -850,10 +827,7 @@ export default function AlumnoDashboard() {
 
               {/* Horarios de clases - siempre mostrar si hay clases */}
               {(() => {
-                // Debug: mostrar información de las sesiones y reservas
-                console.log('Debug - Sesiones totales:', sessions)
-                console.log('Debug - Reservas totales:', myBookings)
-                console.log('Debug - Semana actual:', weekDays.map(d => d.date.toDateString()))
+                // Obtener sesiones y reservas para la semana actual
                 
                 // Obtener todos los horarios únicos donde hay clases (incluyendo reservas del alumno)
                 const allSessions = weekDays.flatMap(day => getSessionsForDay(day.date))
@@ -869,8 +843,7 @@ export default function AlumnoDashboard() {
                   }))
                 })
                 
-                console.log('Debug - Sesiones en la semana:', allSessions)
-                console.log('Debug - Reservas en la semana:', allBookings)
+                // Combinar sesiones y reservas
                 
                 // Combinar sesiones y reservas
                 const allClasses = [...allSessions, ...allBookings]
@@ -881,7 +854,7 @@ export default function AlumnoDashboard() {
                   return `${sessionDate.getHours().toString().padStart(2, '0')}:${sessionDate.getMinutes().toString().padStart(2, '0')}`
                 }))].sort()
                 
-                console.log('Debug - Horarios únicos:', uniqueTimes)
+                // Generar filas de horarios
                 
                 // Si no hay clases en esta semana, mostrar un mensaje
                 if (uniqueTimes.length === 0) {
@@ -1281,10 +1254,13 @@ export default function AlumnoDashboard() {
                   {notifications.filter(n => !n.isRead).length} sin leer
                 </span>
                 <button
-                  onClick={() => fetchNotifications()}
-                  className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  onClick={() => fetchNotifications(true)}
+                  disabled={isRefreshing}
+                  className={`px-3 py-1 text-sm text-blue-600 hover:text-blue-800 font-medium ${
+                    isRefreshing ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
-                  Actualizar
+                  {isRefreshing ? 'Actualizando...' : 'Actualizar'}
                 </button>
               </div>
             </div>

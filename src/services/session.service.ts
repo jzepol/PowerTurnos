@@ -506,7 +506,7 @@ export class SessionService {
       }
     }
 
-    logger.debug('SessionService.getSessions - Where clause:', JSON.stringify(where, null, 2);)
+    logger.debug('SessionService.getSessions - Where clause:', JSON.stringify(where, null, 2))
 
     const sessions = await prisma.classSession.findMany({
       where,

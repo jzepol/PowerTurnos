@@ -70,7 +70,7 @@ export default function GymModal({ isOpen, onClose, onSubmit, gym, users }: GymM
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
               placeholder="Nombre del gimnasio"
               required
             />
@@ -83,7 +83,7 @@ export default function GymModal({ isOpen, onClose, onSubmit, gym, users }: GymM
             <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
               required
             >
               <option value="America/Argentina/San_Luis">America/Argentina/San_Luis</option>
@@ -102,7 +102,7 @@ export default function GymModal({ isOpen, onClose, onSubmit, gym, users }: GymM
               <select
                 value={ownerId}
                 onChange={(e) => setOwnerId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 form-input"
                 required
               >
                 <option value="">Selecciona un usuario</option>

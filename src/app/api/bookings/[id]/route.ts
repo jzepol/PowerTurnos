@@ -28,7 +28,7 @@ export const PATCH = withAuth(async (request: NextRequest, user: any) => {
       )
     }
 
-    logger.debug('✅ API Cancelar Reserva - Datos recibidos:', { bookingId, body, userId: user.id });
+    logger.debug('✅ API Cancelar Reserva - Datos recibidos:', { bookingId, body, userId: user.id })
 
     // Verificar que la reserva existe y pertenece al usuario
     const booking = await prisma.booking.findUnique({
@@ -100,7 +100,7 @@ export const PATCH = withAuth(async (request: NextRequest, user: any) => {
         logger.debug('⚠️ API Cancelar Reserva - No se encontró wallet para reembolso', );
       }
     } else {
-      logger.debug('ℹ️ API Cancelar Reserva - No es cancelación, no se procesa reembolso', );
+      logger.debug('ℹ️ API Cancelar Reserva - No es cancelación, no se procesa reembolso')
     }
 
     logger.debug('🎉 API Cancelar Reserva - Proceso completado exitosamente', );

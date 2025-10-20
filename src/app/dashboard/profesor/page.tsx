@@ -104,10 +104,8 @@ export default function ProfesorDashboard() {
   const [showCreateClass, setShowCreateClass] = useState(false)
   const [showGenerateFromTemplate, setShowGenerateFromTemplate] = useState(false)
   const [showAssignTokens, setShowAssignTokens] = useState(false)
-  const [showCreateClassType, setShowCreateClassType] = useState(false)
   const [showRegisterStudent, setShowRegisterStudent] = useState(false)
-  const [showCreateRoom, setShowCreateRoom] = useState(false)
-  const [showCreateLocation, setShowCreateLocation] = useState(false)
+  const [showMoreOptions, setShowMoreOptions] = useState(false)
   const [selectedGymId, setSelectedGymId] = useState<string>('')
   const [currentUserId, setCurrentUserId] = useState<string>('')
   const [isCreatingClass, setIsCreatingClass] = useState(false)
@@ -135,6 +133,20 @@ export default function ProfesorDashboard() {
 
     return () => clearInterval(interval)
   }, [selectedGymId])
+
+  // Efecto para cerrar el menú desplegable al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMoreOptions && !(event.target as Element).closest('.relative')) {
+        setShowMoreOptions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMoreOptions])
 
   const fetchDashboardData = async () => {
     try {
@@ -365,6 +377,7 @@ export default function ProfesorDashboard() {
   const handleGenerateFromTemplate = async (templateId: string, weeks: number, startDate: string) => {
     try {
       setError('')
+      logger.systemEvent('Generando clases desde plantilla', { templateId, weeks, startDate })
       
       const response = await fetch('/api/schedule-templates/generate', {
         method: 'POST',
@@ -378,6 +391,7 @@ export default function ProfesorDashboard() {
 
       if (response.ok) {
         const result = await response.json()
+        logger.systemEvent('Clases generadas exitosamente', { generated: result.data.generated })
         setShowGenerateFromTemplate(false)
         setSuccessMessage(`¡${result.data.generated} clases generadas exitosamente!`)
         // Recargar sesiones para mostrar las nuevas clases
@@ -387,10 +401,11 @@ export default function ProfesorDashboard() {
         setError('')
       } else {
         const errorData = await response.json()
+        logger.error('Error al generar clases desde plantilla', { error: errorData.error, templateId })
         setError(errorData.error || 'Error al generar clases')
       }
     } catch (error) {
-      console.error('Error al generar clases:', error)
+      logger.error('Error al generar clases desde plantilla', error)
       setError('Error al generar clases')
     }
   }
@@ -478,29 +493,6 @@ export default function ProfesorDashboard() {
     }
   }
 
-  const handleCreateClassType = async (classTypeData: any) => {
-    try {
-      const response = await fetch('/api/classtypes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...classTypeData,
-          gymId: selectedGymId
-        })
-      })
-
-      if (response.ok) {
-        setShowCreateClassType(false)
-        fetchClassTypes(selectedGymId)
-        setError('')
-      } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Error al crear tipo de clase')
-      }
-    } catch (error) {
-      setError('Error al crear tipo de clase')
-    }
-  }
 
   const handleRegisterStudent = async (studentData: any) => {
     try {
@@ -527,53 +519,6 @@ export default function ProfesorDashboard() {
     }
   }
 
-  const handleCreateRoom = async (roomData: any) => {
-    try {
-      const response = await fetch('/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...roomData,
-          gymId: selectedGymId
-        })
-      })
-
-      if (response.ok) {
-        setShowCreateRoom(false)
-        fetchRooms(selectedGymId)
-        setError('')
-      } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Error al crear sala')
-      }
-    } catch (error) {
-      setError('Error al crear sala')
-    }
-  }
-
-  const handleCreateLocation = async (locationData: any) => {
-    try {
-      const response = await fetch('/api/locations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...locationData,
-          gymId: selectedGymId
-        })
-      })
-
-      if (response.ok) {
-        setShowCreateLocation(false)
-        fetchLocations(selectedGymId)
-        setError('')
-      } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Error al crear ubicación')
-      }
-    } catch (error) {
-      setError('Error al crear ubicación')
-    }
-  }
 
   const handleSessionClick = async (session: any) => {
     try {
@@ -634,21 +579,23 @@ export default function ProfesorDashboard() {
                 )}
             </div>
              
-             {/* Botones de acción - Responsive */}
-             <div className="flex flex-wrap justify-center lg:justify-end gap-2 lg:gap-3">
+             {/* Botones Principales - Interfaz Simplificada */}
+             <div className="flex flex-wrap justify-center lg:justify-end gap-3">
+               {/* Botón Principal: Generar desde Plantilla */}
                <button
-                 onClick={() => setShowCreateTemplate(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                 onClick={() => setShowGenerateFromTemplate(true)}
+                 className="inline-flex items-center px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                >
-                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                  </svg>
-                 Nueva Plantilla
+                 Generar Clases
                </button>
                
+               {/* Botón Secundario: Nueva Clase */}
                <button
                  onClick={() => setShowCreateClass(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                 className="inline-flex items-center px-5 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                >
                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -656,66 +603,65 @@ export default function ProfesorDashboard() {
                  Nueva Clase
                </button>
                
-               <button
-                 onClick={() => setShowGenerateFromTemplate(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-purple-500 hover:bg-purple-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-               >
-                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                 </svg>
-                 Generar desde Plantilla
-               </button>
-               
+               {/* Botón Secundario: Asignar Tokens */}
                <button
                  onClick={() => setShowAssignTokens(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-purple-500 hover:bg-purple-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                 className="inline-flex items-center px-5 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                >
                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                  </svg>
-                 Asignar Tokens
+                 Tokens
                </button>
                
-               <button
-                 onClick={() => setShowCreateClassType(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-               >
-                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                 </svg>
-                 Tipo de Clase
-               </button>
-               
-               <button
-                 onClick={() => setShowRegisterStudent(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-               >
-                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                 </svg>
-                 Registrar Alumno
-               </button>
-               
-               <button
-                 onClick={() => setShowCreateRoom(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-               >
-                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                 </svg>
-                 Nueva Sala
-               </button>
-               
-               <button
-                 onClick={() => setShowCreateLocation(true)}
-                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-cyan-500 hover:bg-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-               >
-                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                 </svg>
-                 Nueva Ubicación
-               </button>
+               {/* Menú Desplegable: Más Opciones */}
+               <div className="relative">
+                 <button
+                   onClick={() => setShowMoreOptions(!showMoreOptions)}
+                   className="inline-flex items-center px-4 py-3 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 hover:border-gray-400 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
+                 >
+                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                   </svg>
+                   Más opciones
+                   <svg className={`w-4 h-4 ml-1 transition-transform duration-200 ${showMoreOptions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                   </svg>
+                 </button>
+                 
+                 {/* Menú Desplegable */}
+                 {showMoreOptions && (
+                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                     <div className="py-2">
+                       <button
+                         onClick={() => {
+                           setShowCreateTemplate(true)
+                           setShowMoreOptions(false)
+                         }}
+                         className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                       >
+                         <svg className="w-4 h-4 mr-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                         </svg>
+                         Crear Plantilla
+                       </button>
+                       
+                       <button
+                         onClick={() => {
+                           setShowRegisterStudent(true)
+                           setShowMoreOptions(false)
+                         }}
+                         className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                       >
+                         <svg className="w-4 h-4 mr-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                         </svg>
+                         Registrar Alumno
+                       </button>
+                     </div>
+                   </div>
+                 )}
+               </div>
                
               <button
                 onClick={async () => {
@@ -1076,7 +1022,7 @@ export default function ProfesorDashboard() {
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                          </svg>
                          <span className="font-semibold">Días:</span>
-                         <span className="ml-2">{template.daysOfWeek.map(day => 
+                         <span className="ml-2">{template.daysOfWeek.map((day: number) => 
                            ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][day - 1]
                          ).join(', ')}</span>
                        </div>
@@ -1480,6 +1426,99 @@ export default function ProfesorDashboard() {
         </div>
       )}
 
+      {/* Modal para Generar Clases desde Plantilla */}
+      {showGenerateFromTemplate && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Generar Clases desde Plantilla</h3>
+              <form onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                const templateId = formData.get('templateId') as string
+                const weeks = parseInt(formData.get('weeks') as string)
+                const startDate = formData.get('startDate') as string
+                
+                if (templateId && weeks && startDate) {
+                  handleGenerateFromTemplate(templateId, weeks, startDate)
+                }
+              }}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Seleccionar Plantilla
+                    </label>
+                    <select 
+                      name="templateId" 
+                      required 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    >
+                      <option value="">Seleccionar plantilla...</option>
+                      {templates.map(template => (
+                        <option key={template.id} value={template.id}>
+                          {template.classType.name} - {template.room.name} - {template.startTime} -                           {template.daysOfWeek.map((day: number) => {
+                            const days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+                            return days[day]
+                          }).join(', ')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha de Inicio
+                    </label>
+                    <input 
+                      type="date" 
+                      name="startDate" 
+                      required 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número de Semanas
+                    </label>
+                    <input 
+                      type="number" 
+                      name="weeks" 
+                      min="1" 
+                      max="12" 
+                      required 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="Ej: 4"
+                      defaultValue="4"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Se generarán clases para las próximas {templates.find((t: any) => t.id === (document.querySelector('select[name="templateId"]') as HTMLSelectElement)?.value)?.daysOfWeek?.length || 0} sesiones por semana
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowGenerateFromTemplate(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
+                  >
+                    Generar Clases
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCreateClass && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -1634,68 +1673,6 @@ export default function ProfesorDashboard() {
         </div>
       )}
 
-      {/* Modal para Crear Tipo de Clase */}
-      {showCreateClassType && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Crear Nuevo Tipo de Clase</h3>
-              <form onSubmit={(e) => {
-                e.preventDefault()
-                const formData = new FormData(e.currentTarget)
-                handleCreateClassType({
-                  name: formData.get('name'),
-                  color: formData.get('color'),
-                  durationMin: parseInt(formData.get('durationMin') as string)
-                })
-              }}>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Nombre del Tipo</label>
-                    <input type="text" name="name" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: Yoga, Pilates, Spinning" />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Color</label>
-                    <select name="color" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                      <option value="">Seleccionar color</option>
-                      <option value="#3B82F6">Azul</option>
-                      <option value="#10B981">Verde</option>
-                      <option value="#F59E0B">Amarillo</option>
-                      <option value="#EF4444">Rojo</option>
-                      <option value="#8B5CF6">Púrpura</option>
-                      <option value="#F97316">Naranja</option>
-                      <option value="#06B6D4">Cian</option>
-                      <option value="#84CC16">Lima</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Duración (minutos)</label>
-                    <input type="number" name="durationMin" min="15" max="180" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="60" />
-                  </div>
-                </div>
-                
-                <div className="mt-6 flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateClassType(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700"
-                  >
-                    Crear Tipo
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal para Registrar Alumno */}
       {showRegisterStudent && (
@@ -1750,110 +1727,6 @@ export default function ProfesorDashboard() {
         </div>
       )}
 
-      {/* Modal para Crear Sala */}
-      {showCreateRoom && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Crear Nueva Sala</h3>
-              <form onSubmit={(e) => {
-                e.preventDefault()
-                const formData = new FormData(e.currentTarget)
-                handleCreateRoom({
-                  name: formData.get('name'),
-                  capacity: parseInt(formData.get('capacity') as string),
-                  locationId: formData.get('locationId')
-                })
-              }}>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Nombre de la Sala</label>
-                    <input type="text" name="name" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: Sala A, Studio 1, Gimnasio Principal" />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Ubicación</label>
-                    <select name="locationId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                      <option value="">Seleccionar ubicación</option>
-                      {locations.map(location => (
-                        <option key={location.id} value={location.id}>{location.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Capacidad</label>
-                    <input type="number" name="capacity" min="1" max="100" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: 20" />
-                  </div>
-                </div>
-                
-                <div className="mt-6 flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateRoom(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
-                  >
-                    Crear Sala
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Crear Ubicación */}
-      {showCreateLocation && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Crear Nueva Ubicación</h3>
-              <form onSubmit={(e) => {
-                e.preventDefault()
-                const formData = new FormData(e.currentTarget)
-                handleCreateLocation({
-                  name: formData.get('name'),
-                  address: formData.get('address')
-                })
-              }}>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Nombre de la Ubicación</label>
-                    <input type="text" name="name" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: Sede Central, Sucursal Norte, Plaza Comercial" />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Dirección</label>
-                    <textarea name="address" rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: Av. Principal 123, Ciudad, Provincia" />
-                  </div>
-                </div>
-                
-                <div className="mt-6 flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateLocation(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-cyan-600 rounded-md hover:bg-cyan-700"
-                  >
-                    Crear Ubicación
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal para Detalles de Clase */}
       {showClassDetailsModal && selectedClass && (

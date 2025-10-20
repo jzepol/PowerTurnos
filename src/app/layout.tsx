@@ -1,5 +1,6 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://reservaspower.com"),
@@ -43,13 +44,18 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
-  themeColor: "#53107F",
   alternates: { canonical: "https://reservaspower.com" },
   robots: {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true },
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#53107F",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

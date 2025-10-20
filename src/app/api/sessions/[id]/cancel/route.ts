@@ -26,9 +26,9 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       )
     }
 
-    logger.debug('🚀 API Cancelar Clase - INICIANDO POST', );
-    logger.debug('🆔 API Cancelar Clase - Session ID:', sessionId);
-    logger.debug('👤 API Cancelar Clase - Usuario:', user.id, user.role);
+    logger.debug('🚀 API Cancelar Clase - INICIANDO POST')
+    logger.debug('🆔 API Cancelar Clase - Session ID:', { sessionId })
+    logger.debug('👤 API Cancelar Clase - Usuario:', { userId: user.id, role: user.role })
 
     // Verificar que la sesión existe y pertenece al profesor
     const session = await prisma.classSession.findUnique({
@@ -73,8 +73,8 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       )
     }
 
-    logger.debug('✅ API Cancelar Clase - Permisos verificados, procediendo con cancelación', );
-    logger.debug('📊 API Cancelar Clase - Reservas activas encontradas:', session.bookings.length);
+    logger.debug('✅ API Cancelar Clase - Permisos verificados, procediendo con cancelación')
+    logger.debug('📊 API Cancelar Clase - Reservas activas encontradas:', { count: session.bookings.length })
 
     // Iniciar transacción para cancelar la clase y reembolsar tokens
     const result = await prisma.$transaction(async (tx) => {

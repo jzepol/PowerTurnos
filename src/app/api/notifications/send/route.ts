@@ -24,11 +24,11 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       )
     }
 
-    logger.debug('🚀 API Notificaciones - INICIANDO POST', );
-    logger.debug('🆔 API Notificaciones - Session ID:', sessionId);
-    logger.debug('💬 API Notificaciones - Mensaje:', message);
-    logger.debug('📝 API Notificaciones - Tipo:', type);
-    logger.debug('👤 API Notificaciones - Usuario:', user.id, user.role);
+    logger.debug('🚀 API Notificaciones - INICIANDO POST')
+    logger.debug('🆔 API Notificaciones - Session ID:', { sessionId })
+    logger.debug('💬 API Notificaciones - Mensaje:', { message })
+    logger.debug('📝 API Notificaciones - Tipo:', { type })
+    logger.debug('👤 API Notificaciones - Usuario:', { userId: user.id, role: user.role })
 
     // Verificar que la sesión existe y pertenece al profesor
     const session = await prisma.classSession.findUnique({
