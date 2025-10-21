@@ -111,8 +111,13 @@ export function generateSessionDates(
   for (let week = 0; week < weeks; week++) {
     for (const dayOfWeek of daysOfWeek) {
       const targetDate = new Date(currentDate)
-      const currentDayOfWeek = targetDate.getDay()
-      const daysToAdd = (dayOfWeek - currentDayOfWeek + 7) % 7
+      
+      // Convertir el día de JavaScript (0=Dom, 1=Lun, ..., 6=Sáb) a nuestro sistema (1=Lun, ..., 7=Dom)
+      const jsDayOfWeek = targetDate.getDay()
+      const ourDayOfWeek = jsDayOfWeek === 0 ? 7 : jsDayOfWeek
+      
+      // Calcular días a agregar
+      const daysToAdd = (dayOfWeek - ourDayOfWeek + 7) % 7
       
       if (daysToAdd > 0) {
         targetDate.setDate(targetDate.getDate() + daysToAdd)

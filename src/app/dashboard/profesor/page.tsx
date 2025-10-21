@@ -101,6 +101,9 @@ export default function ProfesorDashboard() {
   const [successMessage, setSuccessMessage] = useState('')
   const [activeTab, setActiveTab] = useState('calendar')
   const [showCreateTemplate, setShowCreateTemplate] = useState(false)
+  const [showEditTemplate, setShowEditTemplate] = useState(false)
+  const [showDeleteTemplate, setShowDeleteTemplate] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
   const [showCreateClass, setShowCreateClass] = useState(false)
   const [showGenerateFromTemplate, setShowGenerateFromTemplate] = useState(false)
   const [showAssignTokens, setShowAssignTokens] = useState(false)
@@ -122,16 +125,16 @@ export default function ProfesorDashboard() {
     fetchDashboardData()
   }, [currentWeek])
 
-  // Efecto para actualización automática cada 30 segundos
+  // Efecto para actualización automática cada 5 minutos (menos agresivo)
   useEffect(() => {
-    const interval = setInterval(() => {
-      logger.systemEvent('Actualización automática del dashboard del profesor')
-      if (selectedGymId) {
+    if (selectedGymId) {
+      const interval = setInterval(() => {
+        logger.systemEvent('Actualización automática del dashboard del profesor')
         fetchSessions(selectedGymId)
-      }
-    }, 30000) // 30 segundos
+      }, 300000) // 5 minutos (300 segundos)
 
-    return () => clearInterval(interval)
+      return () => clearInterval(interval)
+    }
   }, [selectedGymId])
 
   // Efecto para cerrar el menú desplegable al hacer clic fuera
@@ -364,6 +367,7 @@ export default function ProfesorDashboard() {
         setShowCreateTemplate(false)
         fetchTemplates(selectedGymId)
         setError('')
+        setSuccessMessage('Plantilla creada exitosamente')
       } else {
         const errorData = await response.json()
         setError(errorData.error || 'Error al crear plantilla')
@@ -371,6 +375,56 @@ export default function ProfesorDashboard() {
     } catch (error) {
       console.error('Error al crear plantilla:', error)
       setError('Error al crear plantilla')
+    }
+  }
+
+  const handleEditTemplate = async (templateData: any) => {
+    try {
+      if (!selectedTemplate) return
+
+      const response = await fetch(`/api/schedule-templates/${selectedTemplate.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(templateData)
+      })
+
+      if (response.ok) {
+        setShowEditTemplate(false)
+        setSelectedTemplate(null)
+        fetchTemplates(selectedGymId)
+        setError('')
+        setSuccessMessage('Plantilla actualizada exitosamente')
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || 'Error al actualizar plantilla')
+      }
+    } catch (error) {
+      console.error('Error al actualizar plantilla:', error)
+      setError('Error al actualizar plantilla')
+    }
+  }
+
+  const handleDeleteTemplate = async () => {
+    try {
+      if (!selectedTemplate) return
+
+      const response = await fetch(`/api/schedule-templates/${selectedTemplate.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setShowDeleteTemplate(false)
+        setSelectedTemplate(null)
+        fetchTemplates(selectedGymId)
+        setError('')
+        setSuccessMessage('Plantilla eliminada exitosamente')
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || 'Error al eliminar plantilla')
+      }
+    } catch (error) {
+      console.error('Error al eliminar plantilla:', error)
+      setError('Error al eliminar plantilla')
     }
   }
 
@@ -1021,8 +1075,8 @@ export default function ProfesorDashboard() {
                          <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                          </svg>
-                         <span className="font-semibold">Días:</span>
-                         <span className="ml-2">{template.daysOfWeek.map((day: number) => 
+                         <span className="font-semibold text-gray-700">Días:</span>
+                         <span className="ml-2 text-gray-600">{template.daysOfWeek.map((day: number) => 
                            ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][day - 1]
                          ).join(', ')}</span>
                        </div>
@@ -1030,23 +1084,51 @@ export default function ProfesorDashboard() {
                          <svg className="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                          </svg>
-                         <span className="font-semibold">Hora:</span>
-                         <span className="ml-2">{template.startTime}</span>
+                         <span className="font-semibold text-gray-700">Hora:</span>
+                         <span className="ml-2 text-gray-600">{template.startTime}</span>
                        </div>
                        <div className="flex items-center">
                          <svg className="w-4 h-4 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l4 4m0-4l-4 4" />
                          </svg>
-                         <span className="font-semibold">Duración:</span>
-                         <span className="ml-2">{template.durationMin} min</span>
+                         <span className="font-semibold text-gray-700">Duración:</span>
+                         <span className="ml-2 text-gray-600">{template.durationMin} min</span>
                        </div>
                        <div className="flex items-center">
                          <svg className="w-4 h-4 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                          </svg>
-                         <span className="font-semibold">Capacidad:</span>
-                         <span className="ml-2">{template.capacity}</span>
+                         <span className="font-semibold text-gray-700">Capacidad:</span>
+                         <span className="ml-2 text-gray-600">{template.capacity}</span>
                        </div>
+                     </div>
+                     
+                     {/* Botones de acción */}
+                     <div className="mt-4 flex justify-end space-x-2">
+                       <button
+                         onClick={() => {
+                           setSelectedTemplate(template)
+                           setShowEditTemplate(true)
+                         }}
+                         className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors duration-200 flex items-center space-x-1"
+                       >
+                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                         </svg>
+                         <span>Editar</span>
+                       </button>
+                       <button
+                         onClick={() => {
+                           setSelectedTemplate(template)
+                           setShowDeleteTemplate(true)
+                         }}
+                         className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors duration-200 flex items-center space-x-1"
+                       >
+                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                         </svg>
+                         <span>Eliminar</span>
+                       </button>
                      </div>
                    </div>
                  </div>
@@ -1347,7 +1429,7 @@ export default function ProfesorDashboard() {
       {/* Modales */}
       {showCreateTemplate && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-10 mx-auto p-5 border w-[500px] max-w-[95vw] shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Crear Nueva Plantilla</h3>
               <form onSubmit={(e) => {
@@ -1358,11 +1440,25 @@ export default function ProfesorDashboard() {
                   return
                 }
                 
+                // Obtener los días seleccionados
+                const selectedDays: number[] = []
+                const dayNames = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+                dayNames.forEach((day, index) => {
+                  if (formData.get(`day-${index + 1}`)) {
+                    selectedDays.push(index + 1)
+                  }
+                })
+                
+                if (selectedDays.length === 0) {
+                  setError('Debes seleccionar al menos un día de la semana.')
+                  return
+                }
+                
                 handleCreateTemplate({
                   profId: currentUserId,
                   roomId: formData.get('roomId'),
                   classTypeId: formData.get('classTypeId'),
-                  daysOfWeek: [1, 3, 5], // Por defecto Lunes, Miércoles, Viernes
+                  daysOfWeek: selectedDays,
                   startTime: formData.get('startTime'),
                   durationMin: parseInt(formData.get('durationMin') as string),
                   capacity: parseInt(formData.get('capacity') as string)
@@ -1403,6 +1499,32 @@ export default function ProfesorDashboard() {
                     <label className="block text-sm font-medium text-gray-700">Capacidad</label>
                     <input type="number" name="capacity" min="1" max="50" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
                   </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Días de la Semana</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 1, name: 'Lunes', short: 'Lun' },
+                        { id: 2, name: 'Martes', short: 'Mar' },
+                        { id: 3, name: 'Miércoles', short: 'Mié' },
+                        { id: 4, name: 'Jueves', short: 'Jue' },
+                        { id: 5, name: 'Viernes', short: 'Vie' },
+                        { id: 6, name: 'Sábado', short: 'Sáb' },
+                        { id: 7, name: 'Domingo', short: 'Dom' }
+                      ].map(day => (
+                        <label key={day.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            name={`day-${day.id}`}
+                            value={day.id}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{day.short}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Selecciona los días en que se repetirá esta clase</p>
+                  </div>
                 </div>
                 
                 <div className="mt-6 flex justify-end space-x-3">
@@ -1421,6 +1543,190 @@ export default function ProfesorDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Editar Plantilla */}
+      {showEditTemplate && selectedTemplate && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-5 border w-[500px] max-w-[95vw] shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Editar Plantilla</h3>
+              <form onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                
+                // Obtener los días seleccionados
+                const selectedDays: number[] = []
+                const dayNames = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+                dayNames.forEach((day, index) => {
+                  if (formData.get(`day-${index + 1}`)) {
+                    selectedDays.push(index + 1)
+                  }
+                })
+                
+                if (selectedDays.length === 0) {
+                  setError('Debes seleccionar al menos un día de la semana.')
+                  return
+                }
+                
+                handleEditTemplate({
+                  roomId: formData.get('roomId'),
+                  classTypeId: formData.get('classTypeId'),
+                  daysOfWeek: selectedDays,
+                  startTime: formData.get('startTime'),
+                  durationMin: parseInt(formData.get('durationMin') as string),
+                  capacity: parseInt(formData.get('capacity') as string),
+                  active: formData.get('active') === 'true'
+                })
+              }}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Tipo de Clase</label>
+                    <select name="classTypeId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Seleccionar tipo</option>
+                      {classTypes.map(type => (
+                        <option key={type.id} value={type.id} selected={type.id === selectedTemplate.classTypeId}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Sala</label>
+                    <select name="roomId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                      <option value="">Seleccionar sala</option>
+                      {rooms.map(room => (
+                        <option key={room.id} value={room.id} selected={room.id === selectedTemplate.roomId}>
+                          {room.name} - {room.location.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Hora de Inicio</label>
+                    <input type="time" name="startTime" defaultValue={selectedTemplate.startTime} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Duración (minutos)</label>
+                    <input type="number" name="durationMin" min="15" max="180" defaultValue={selectedTemplate.durationMin} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Capacidad</label>
+                    <input type="number" name="capacity" min="1" max="50" defaultValue={selectedTemplate.capacity} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Días de la Semana</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 1, name: 'Lunes', short: 'Lun' },
+                        { id: 2, name: 'Martes', short: 'Mar' },
+                        { id: 3, name: 'Miércoles', short: 'Mié' },
+                        { id: 4, name: 'Jueves', short: 'Jue' },
+                        { id: 5, name: 'Viernes', short: 'Vie' },
+                        { id: 6, name: 'Sábado', short: 'Sáb' },
+                        { id: 7, name: 'Domingo', short: 'Dom' }
+                      ].map(day => (
+                        <label key={day.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            name={`day-${day.id}`}
+                            value={day.id}
+                            defaultChecked={selectedTemplate.daysOfWeek.includes(day.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{day.short}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Selecciona los días en que se repetirá esta clase</p>
+                  </div>
+                  
+                  <div>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        name="active"
+                        value="true"
+                        defaultChecked={selectedTemplate.active}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Plantilla activa</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditTemplate(false)
+                      setSelectedTemplate(null)
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                  >
+                    Actualizar Plantilla
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Eliminar Plantilla */}
+      {showDeleteTemplate && selectedTemplate && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="mt-3 text-center">
+                <h3 className="text-lg font-medium text-gray-900">¿Eliminar plantilla?</h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500">
+                    ¿Estás seguro de que quieres eliminar la plantilla <strong>{selectedTemplate.classType.name}</strong>?
+                  </p>
+                  <p className="text-xs text-red-600 mt-2">
+                    Esta acción no se puede deshacer.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteTemplate(false)
+                    setSelectedTemplate(null)
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteTemplate}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                >
+                  Eliminar
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -236,32 +236,29 @@ export default function AlumnoDashboard() {
     }
   }, [sessions, currentGymId, isManualNavigation])
 
-  // Efecto para actualización automática cada 2 minutos (menos agresivo)
+  // Efecto para actualización automática cada 5 minutos (menos agresivo)
   useEffect(() => {
-    if (currentGymId && autoRefreshEnabled && !isInitialLoad) {
+    if (currentGymId && autoRefreshEnabled && !isInitialLoad && !isRefreshing) {
       const interval = setInterval(() => {
         logger.debug('🔄 Actualización automática del dashboard...')
-        // Solo actualizar si no está refrescando manualmente
-        if (!isRefreshing) {
-          fetchDashboardData(currentGymId, false) // No mostrar loading en actualizaciones automáticas
-        }
-      }, 120000) // 2 minutos (120 segundos)
+        fetchDashboardData(currentGymId, false) // No mostrar loading en actualizaciones automáticas
+      }, 300000) // 5 minutos (300 segundos)
 
       return () => clearInterval(interval)
     }
-  }, [currentGymId, isRefreshing, autoRefreshEnabled, isInitialLoad])
+  }, [currentGymId, autoRefreshEnabled, isInitialLoad]) // Removido isRefreshing de las dependencias
 
   // Efecto para actualizar datos cuando cambia la semana (con debounce)
   useEffect(() => {
-    if (currentGymId && !isInitialLoad) {
+    if (currentGymId && !isInitialLoad && !isRefreshing) {
       const timeoutId = setTimeout(() => {
         logger.debug('Semana cambiada, actualizando datos...')
         fetchDashboardData(currentGymId, false) // No mostrar loading en cambio de semana
-      }, 100) // Debounce de 100ms
+      }, 300) // Debounce de 300ms para evitar actualizaciones muy frecuentes
 
       return () => clearTimeout(timeoutId)
     }
-  }, [currentWeek, currentGymId, isInitialLoad])
+  }, [currentWeek, currentGymId, isInitialLoad]) // Removido isRefreshing de las dependencias
 
   const fetchUserProfile = async () => {
     try {
@@ -291,9 +288,17 @@ export default function AlumnoDashboard() {
 
   const fetchDashboardData = async (gymId: string, showLoading = true) => {
     try {
-      if (showLoading && !isRefreshing) {
+      // Solo mostrar loading en la carga inicial o cuando se solicite explícitamente
+      if (showLoading && isInitialLoad && !isRefreshing) {
         setIsLoading(true)
       }
+      
+      // Evitar múltiples llamadas simultáneas
+      if (isRefreshing) {
+        logger.debug('Ya hay una actualización en curso, saltando...')
+        return
+      }
+      
       setIsRefreshing(true)
       setError('')
 
@@ -344,6 +349,7 @@ export default function AlumnoDashboard() {
       setIsLoading(false)
       setIsRefreshing(false)
       setLastUpdate(new Date())
+      setIsInitialLoad(false)
     }
   }
 
