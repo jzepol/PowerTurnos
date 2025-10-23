@@ -242,7 +242,7 @@ export default function AlumnoDashboard() {
       const interval = setInterval(() => {
         logger.debug('🔄 Actualización automática del dashboard...')
         fetchDashboardData(currentGymId, false) // No mostrar loading en actualizaciones automáticas
-      }, 300000) // 5 minutos (300 segundos)
+      }, 30000) // 30 segundos para mejor experiencia en tiempo real
 
       return () => clearInterval(interval)
     }
@@ -302,8 +302,9 @@ export default function AlumnoDashboard() {
       setIsRefreshing(true)
       setError('')
 
-      // Obtener sesiones disponibles del gym específico
-      const sessionsResponse = await fetch(`/api/sessions?status=PROGRAMADA&gymId=${gymId}`)
+      // Obtener sesiones disponibles del gym específico con invalidación de cache
+      const timestamp = new Date().getTime()
+      const sessionsResponse = await fetch(`/api/sessions?status=PROGRAMADA&gymId=${gymId}&_t=${timestamp}`)
       if (sessionsResponse.ok) {
         const sessionsData = await sessionsResponse.json()
         if (sessionsData.success) {
@@ -316,8 +317,8 @@ export default function AlumnoDashboard() {
         logger.error('Error HTTP al obtener sesiones:', { status: sessionsResponse.status })
       }
 
-      // Obtener mis reservas
-      const bookingsResponse = await fetch('/api/bookings/my-bookings')
+      // Obtener mis reservas con invalidación de cache
+      const bookingsResponse = await fetch(`/api/bookings/my-bookings?_t=${timestamp}`)
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json()
         if (bookingsData.success) {
@@ -480,7 +481,12 @@ export default function AlumnoDashboard() {
       if (response.ok) {
         setShowBookingDialog(false)
         setSelectedSession(null)
-        fetchDashboardData(currentGymId!, false) // Recargar datos sin loading
+        // Recargar datos inmediatamente con invalidación de cache
+        await fetchDashboardData(currentGymId!, false) // Recargar datos sin loading
+        // Forzar actualización adicional después de un breve delay para asegurar sincronización
+        setTimeout(async () => {
+          await fetchDashboardData(currentGymId!, false)
+        }, 1000)
         setError('')
       } else {
         const errorData = await response.json()
@@ -515,8 +521,12 @@ export default function AlumnoDashboard() {
       if (response.ok) {
         setShowCancellationDialog(false)
         setSelectedBooking(null)
-        // Recargar datos inmediatamente
+        // Recargar datos inmediatamente con invalidación de cache
         await fetchDashboardData(currentGymId!, false) // No mostrar loading en cancelación
+        // Forzar actualización adicional después de un breve delay para asegurar sincronización
+        setTimeout(async () => {
+          await fetchDashboardData(currentGymId!, false)
+        }, 1000)
         setError('')
       } else {
         const errorData = await response.json()
@@ -939,9 +949,17 @@ export default function AlumnoDashboard() {
                                     <div className="text-gray-700 text-xs mb-1 truncate">{booking.session.room.name}</div>
                                     <div className="text-gray-600 text-xs mb-1 truncate">Prof. {booking.session.professor.name}</div>
                                     <div className="flex items-center justify-between">
-                                      <span className="text-xs text-gray-600">Reservada</span>
-                                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-                                        Reservada
+                                      <span className="text-xs text-gray-600">
+                                        {booking.status === 'RESERVADA' ? 'Reservada' :
+                                         booking.status === 'ASISTIO' ? 'Asistió' : 'Cancelada'}
+                                      </span>
+                                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                        booking.status === 'RESERVADA' ? 'bg-green-100 text-green-800' :
+                                        booking.status === 'ASISTIO' ? 'bg-blue-100 text-blue-800' :
+                                        'bg-red-100 text-red-800'
+                                      }`}>
+                                        {booking.status === 'RESERVADA' ? 'Reservada' :
+                                         booking.status === 'ASISTIO' ? 'Asistió' : 'Cancelada'}
                                       </span>
                                     </div>
                                   </div>
@@ -1019,14 +1037,20 @@ export default function AlumnoDashboard() {
                 
                 // Primero agregar las reservas del alumno
                 dayBookings.forEach(booking => {
-                  allDayClasses.push({ ...booking.session, type: 'booked', bookingId: booking.id })
+                  allDayClasses.push({ 
+                    ...booking.session, 
+                    type: 'booked', 
+                    bookingId: booking.id,
+                    bookingStatus: booking.status 
+                  })
                 })
                 
                 // Luego agregar solo las clases disponibles que NO estén ya reservadas por el alumno
                 daySessions.forEach(session => {
                   const isAlreadyBooked = dayBookings.some(booking => 
                     booking.session.id === session.id && 
-                    new Date(booking.session.startAt).getTime() === new Date(session.startAt).getTime()
+                    new Date(booking.session.startAt).getTime() === new Date(session.startAt).getTime() &&
+                    booking.status === 'RESERVADA' // Solo considerar reservas activas
                   )
                   
                   if (!isAlreadyBooked) {
@@ -1101,8 +1125,13 @@ export default function AlumnoDashboard() {
                                     {classItem.classType.name}
                                   </h4>
                                   {isBooked && (
-                                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-                                      Reservada
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                      (classItem as any).bookingStatus === 'RESERVADA' ? 'bg-green-100 text-green-800' :
+                                      (classItem as any).bookingStatus === 'ASISTIO' ? 'bg-blue-100 text-blue-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                      {(classItem as any).bookingStatus === 'RESERVADA' ? 'Reservada' :
+                                       (classItem as any).bookingStatus === 'ASISTIO' ? 'Asistió' : 'Cancelada'}
                                     </span>
                                   )}
                                 </div>
@@ -1135,8 +1164,13 @@ export default function AlumnoDashboard() {
                               {/* Estado de la clase */}
                                                                 <div className="text-right">
                                     {isBooked ? (
-                                      <div className="text-green-600 font-semibold">
-                                        ✓ Reservada
+                                      <div className={`font-semibold ${
+                                        (classItem as any).bookingStatus === 'RESERVADA' ? 'text-green-600' :
+                                        (classItem as any).bookingStatus === 'ASISTIO' ? 'text-blue-600' :
+                                        'text-red-600'
+                                      }`}>
+                                        {((classItem as any).bookingStatus === 'RESERVADA' ? '✓ Reservada' :
+                                          (classItem as any).bookingStatus === 'ASISTIO' ? '✓ Asistió' : '✗ Cancelada')}
                                       </div>
                                     ) : (
                                       <div className="text-blue-600 font-semibold">

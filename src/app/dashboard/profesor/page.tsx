@@ -118,6 +118,10 @@ export default function ProfesorDashboard() {
   const [selectedClass, setSelectedClass] = useState<any>(null)
   const [classBookings, setClassBookings] = useState<any[]>([])
   const [isLoadingBookings, setIsLoadingBookings] = useState(false)
+  
+  // Estados para tokens de alumnos
+  const [studentTokens, setStudentTokens] = useState<any[]>([])
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false)
 
   const weekDays = getWeekDaysWithNames(currentWeek)
 
@@ -131,7 +135,7 @@ export default function ProfesorDashboard() {
       const interval = setInterval(() => {
         logger.systemEvent('Actualización automática del dashboard del profesor')
         fetchSessions(selectedGymId)
-      }, 300000) // 5 minutos (300 segundos)
+      }, 30000) // 30 segundos para mejor experiencia en tiempo real
 
       return () => clearInterval(interval)
     }
@@ -184,6 +188,9 @@ export default function ProfesorDashboard() {
                 fetchLocations(gymId),
                 fetchUsers(gymId)
               ])
+              
+              // Cargar tokens de alumnos en paralelo
+              fetchStudentTokens(gymId)
             }
           }
         } else {
@@ -215,7 +222,9 @@ export default function ProfesorDashboard() {
       })
       
       // Para profesores, no necesitamos enviar profId porque la API ya filtra por el usuario autenticado
-      const sessionsResponse = await fetch(`/api/sessions?gymId=${gymId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
+      // Agregar timestamp para evitar cache y asegurar datos frescos
+      const timestamp = new Date().getTime()
+      const sessionsResponse = await fetch(`/api/sessions?gymId=${gymId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&_t=${timestamp}`)
       if (sessionsResponse.ok) {
         const sessionsData = await sessionsResponse.json()
         if (sessionsData.success) {
@@ -300,6 +309,47 @@ export default function ProfesorDashboard() {
       }
     } catch (error) {
       console.error('Error al obtener usuarios:', error)
+    }
+  }
+
+  const fetchStudentTokens = async (gymId: string) => {
+    try {
+      setIsLoadingTokens(true)
+      const tokensData = []
+      
+      // Obtener todos los usuarios (alumnos) del gimnasio
+      const response = await fetch(`/api/users?gymId=${gymId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          const students = data.data.filter((user: any) => user.role === 'ALUMNO')
+          
+          // Para cada alumno, obtener su información de tokens
+          for (const student of students) {
+            try {
+              const tokenResponse = await fetch(`/api/tokens/student-info?userId=${student.id}&gymId=${gymId}`)
+              if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json()
+                if (tokenData.success) {
+                  tokensData.push({
+                    ...student,
+                    wallet: tokenData.data.wallet,
+                    recentBookings: tokenData.data.recentBookings
+                  })
+                }
+              }
+            } catch (error) {
+              console.error(`Error al obtener tokens de ${student.name}:`, error)
+            }
+          }
+        }
+      }
+      
+      setStudentTokens(tokensData)
+    } catch (error) {
+      console.error('Error al obtener tokens de alumnos:', error)
+    } finally {
+      setIsLoadingTokens(false)
     }
   }
 
@@ -439,7 +489,7 @@ export default function ProfesorDashboard() {
         body: JSON.stringify({
           templateId,
           weeks: parseInt(weeks.toString()),
-          startDate: new Date(startDate)
+          startDate: new Date(startDate + 'T00:00:00')
         })
       })
 
@@ -451,6 +501,10 @@ export default function ProfesorDashboard() {
         // Recargar sesiones para mostrar las nuevas clases
         if (selectedGymId) {
           await fetchSessions(selectedGymId)
+          // Forzar actualización adicional después de un breve delay para asegurar sincronización
+          setTimeout(async () => {
+            await fetchSessions(selectedGymId)
+          }, 1000)
         }
         setError('')
       } else {
@@ -508,6 +562,10 @@ export default function ProfesorDashboard() {
         setShowCreateClass(false)
         // Recargar sesiones después de crear la clase
         await fetchSessions(selectedGymId)
+        // Forzar actualización adicional después de un breve delay para asegurar sincronización
+        setTimeout(async () => {
+          await fetchSessions(selectedGymId)
+        }, 1000)
         setError('')
         setSuccessMessage('Clase creada exitosamente')
         setTimeout(() => setSuccessMessage(''), 3000)
@@ -832,11 +890,12 @@ export default function ProfesorDashboard() {
             <button
               onClick={() => fetchSessions(selectedGymId)}
               className="flex items-center px-4 py-3 text-sm font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all duration-200 transform hover:scale-105"
-              title="Actualizar calendario"
+              title="Actualizar calendario y reservas"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
+              <span className="ml-2">Actualizar</span>
             </button>
           </div>
           
@@ -1382,6 +1441,133 @@ export default function ProfesorDashboard() {
                  </table>
                </div>
              </div>
+
+             {/* Tokens de Alumnos */}
+             <div className="bg-white rounded-xl shadow-lg p-8">
+               <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                 <svg className="w-6 h-6 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                 </svg>
+                 Tokens de Alumnos
+               </h2>
+               
+               {isLoadingTokens ? (
+                 <div className="text-center py-8">
+                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                   <p className="text-gray-600 mt-2">Cargando información de tokens...</p>
+                 </div>
+               ) : (
+                 <div className="overflow-x-auto">
+                   <table className="min-w-full divide-y divide-gray-200">
+                     <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                       <tr>
+                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                           Alumno
+                         </th>
+                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                           Tokens Disponibles
+                         </th>
+                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                           Próximo Vencimiento
+                         </th>
+                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                           Estado
+                         </th>
+                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                           Acciones
+                         </th>
+                       </tr>
+                     </thead>
+                     <tbody className="bg-white divide-y divide-gray-200">
+                       {studentTokens.map(student => {
+                         const wallet = student.wallet
+                         const grants = wallet?.grants || []
+                         const nextExpiry = grants.length > 0 ? grants.reduce((latest: any, grant: any) => {
+                           return !latest || (grant.expiresAt && new Date(grant.expiresAt) < new Date(latest.expiresAt)) ? grant : latest
+                         }, null) : null
+                         
+                         const isExpiringSoon = nextExpiry && new Date(nextExpiry.expiresAt) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 días
+                         const isExpired = nextExpiry && new Date(nextExpiry.expiresAt) <= new Date()
+                         
+                         return (
+                           <tr key={student.id} className="hover:bg-gray-50 transition-colors duration-200">
+                             <td className="px-6 py-4 whitespace-nowrap">
+                               <div className="flex items-center">
+                                 <div className="w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3">
+                                   {student.name.charAt(0).toUpperCase()}
+                                 </div>
+                                 <div>
+                                   <div className="text-sm font-semibold text-gray-900">{student.name}</div>
+                                   <div className="text-sm text-gray-500">{student.email}</div>
+                                 </div>
+                               </div>
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap">
+                               <div className="text-2xl font-bold text-gray-900">
+                                 {wallet?.balance || 0}
+                               </div>
+                               <div className="text-xs text-gray-500">
+                                 {grants.length > 0 ? `${grants.length} asignaciones` : 'Sin tokens'}
+                               </div>
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap">
+                               {nextExpiry ? (
+                                 <div>
+                                   <div className={`text-sm font-semibold ${isExpired ? 'text-red-600' : isExpiringSoon ? 'text-orange-600' : 'text-gray-900'}`}>
+                                     {formatDate(nextExpiry.expiresAt)}
+                                   </div>
+                                   <div className="text-xs text-gray-500">
+                                     {isExpired ? 'Vencido' : isExpiringSoon ? 'Vence pronto' : 'Activo'}
+                                   </div>
+                                 </div>
+                               ) : (
+                                 <div className="text-sm text-gray-500">Sin vencimiento</div>
+                               )}
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap">
+                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                 isExpired ? 'bg-red-100 text-red-800' :
+                                 isExpiringSoon ? 'bg-orange-100 text-orange-800' :
+                                 (wallet?.balance || 0) > 0 ? 'bg-green-100 text-green-800' :
+                                 'bg-gray-100 text-gray-800'
+                               }`}>
+                                 {isExpired ? 'Vencido' :
+                                  isExpiringSoon ? 'Vence pronto' :
+                                  (wallet?.balance || 0) > 0 ? 'Activo' : 'Sin tokens'}
+                               </span>
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                               <button 
+                                 onClick={() => {
+                                   setShowAssignTokens(true)
+                                   // Aquí podrías pre-seleccionar el usuario
+                                 }}
+                                 className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-all duration-200 transform hover:scale-105"
+                               >
+                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                 </svg>
+                                 Asignar
+                               </button>
+                             </td>
+                           </tr>
+                         )
+                       })}
+                     </tbody>
+                   </table>
+                   
+                   {studentTokens.length === 0 && !isLoadingTokens && (
+                     <div className="text-center py-8 bg-gray-50 rounded-lg">
+                       <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                       </svg>
+                       <p className="text-gray-500 text-lg">No hay alumnos registrados</p>
+                       <p className="text-gray-400 text-sm">Los alumnos aparecerán aquí una vez que se registren</p>
+                     </div>
+                   )}
+                 </div>
+               )}
+             </div>
            </div>
          )}
 
@@ -1467,7 +1653,7 @@ export default function ProfesorDashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Tipo de Clase</label>
-                    <select name="classTypeId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="classTypeId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                       <option value="">Seleccionar tipo</option>
                       {classTypes.map(type => (
                         <option key={type.id} value={type.id}>{type.name}</option>
@@ -1477,7 +1663,7 @@ export default function ProfesorDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Sala</label>
-                    <select name="roomId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="roomId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                       <option value="">Seleccionar sala</option>
                       {rooms.map(room => (
                         <option key={room.id} value={room.id}>{room.name} - {room.location.name}</option>
@@ -1487,17 +1673,17 @@ export default function ProfesorDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Hora de Inicio</label>
-                    <input type="time" name="startTime" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="time" name="startTime" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Duración (minutos)</label>
-                    <input type="number" name="durationMin" min="15" max="180" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="number" name="durationMin" min="15" max="180" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 60" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Capacidad</label>
-                    <input type="number" name="capacity" min="1" max="50" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="number" name="capacity" min="1" max="50" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 10" />
                   </div>
                   
                   <div>
@@ -1857,7 +2043,7 @@ export default function ProfesorDashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Tipo de Clase</label>
-                    <select name="classTypeId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="classTypeId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                       <option value="">Seleccionar tipo</option>
                       {classTypes.map(type => (
                         <option key={type.id} value={type.id}>{type.name}</option>
@@ -1867,7 +2053,7 @@ export default function ProfesorDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Sala</label>
-                    <select name="roomId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="roomId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                       <option value="">Seleccionar sala</option>
                       {rooms.map(room => (
                         <option key={room.id} value={room.id}>{room.name} - {room.location.name}</option>
@@ -1877,22 +2063,22 @@ export default function ProfesorDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Fecha</label>
-                    <input type="date" name="startDate" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="date" name="startDate" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Hora de Inicio</label>
-                    <input type="time" name="startTime" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="time" name="startTime" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Duración (minutos)</label>
-                    <input type="number" name="durationMin" min="15" max="180" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="number" name="durationMin" min="15" max="180" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 60" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Capacidad</label>
-                    <input type="number" name="capacity" min="1" max="50" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="number" name="capacity" min="1" max="50" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 10" />
                   </div>
                 </div>
                 
@@ -1939,7 +2125,7 @@ export default function ProfesorDashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Alumno</label>
-                    <select name="userId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="userId" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                       <option value="">Seleccionar alumno</option>
                       {users.map(user => (
                         <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
@@ -1949,12 +2135,12 @@ export default function ProfesorDashboard() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Cantidad de Tokens</label>
-                    <input type="number" name="tokens" min="1" max="100" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="number" name="tokens" min="1" max="100" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Razón (opcional)</label>
-                    <input type="text" name="reason" placeholder="Ej: Bono por buen comportamiento" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+                    <input type="text" name="reason" placeholder="Ej: Bono por buen comportamiento" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                 </div>
                 

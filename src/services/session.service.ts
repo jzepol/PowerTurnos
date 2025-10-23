@@ -46,21 +46,8 @@ export class SessionService {
       }
     }
 
-    // CORRECCIÓN: Sumar 1 día a las fechas para compensar el desfase de zona horaria
-    const correctedStartAt = new Date(data.startAt)
-    correctedStartAt.setDate(correctedStartAt.getDate() + 1)
-    
-    const correctedEndAt = new Date(data.endAt)
-    correctedEndAt.setDate(correctedEndAt.getDate() + 1)
-    
-    console.log('SessionService.createSession - Fechas corregidas:', {
-      originalStartAt: data.startAt,
-      correctedStartAt: correctedStartAt,
-      originalEndAt: data.endAt,
-      correctedEndAt: correctedEndAt
-    })
 
-    // Verificar que la sala esté disponible en ese horario (usar fechas corregidas)
+    // Verificar que la sala esté disponible en ese horario
     const conflictingSession = await prisma.classSession.findFirst({
       where: {
         roomId: data.roomId,
@@ -70,10 +57,10 @@ export class SessionService {
         OR: [
           {
             startAt: {
-              lt: correctedEndAt
+              lt: data.endAt
             },
             endAt: {
-              gt: correctedStartAt
+              gt: data.startAt
             }
           }
         ]
@@ -84,15 +71,15 @@ export class SessionService {
       throw new AuthError('La sala no está disponible en ese horario', 400)
     }
 
-    // Crear la sesión con fechas corregidas
+    // Crear la sesión
     const session = await prisma.classSession.create({
       data: {
         gymId: data.gymId,
         profId: data.profId,
         roomId: data.roomId,
         classTypeId: data.classTypeId,
-        startAt: correctedStartAt,
-        endAt: correctedEndAt,
+        startAt: data.startAt,
+        endAt: data.endAt,
         capacity: data.capacity,
         status: 'PROGRAMADA'
       },
@@ -187,21 +174,8 @@ export class SessionService {
         
         const endAt = new Date(startAt.getTime() + template.durationMin * 60 * 1000)
 
-        // CORRECCIÓN: Sumar 1 día a las fechas para compensar el desfase de zona horaria
-        const correctedStartAt = new Date(startAt)
-        correctedStartAt.setDate(correctedStartAt.getDate() + 1)
-        
-        const correctedEndAt = new Date(endAt)
-        correctedEndAt.setDate(correctedEndAt.getDate() + 1)
-        
-        console.log('SessionService.generateSessionsFromTemplate - Fechas corregidas:', {
-          originalStartAt: startAt,
-          correctedStartAt: correctedStartAt,
-          originalEndAt: endAt,
-          correctedEndAt: correctedEndAt
-        })
 
-        // Verificar disponibilidad de la sala (usar fechas corregidas)
+        // Verificar disponibilidad de la sala
         const conflictingSession = await prisma.classSession.findFirst({
           where: {
             roomId: template.roomId,
@@ -211,10 +185,10 @@ export class SessionService {
             OR: [
               {
                 startAt: {
-                  lt: correctedEndAt
+                  lt: endAt
                 },
                 endAt: {
-                  gt: correctedStartAt
+                  gt: startAt
                 }
               }
             ]
@@ -226,15 +200,15 @@ export class SessionService {
           continue
         }
 
-        // Crear la sesión con fechas corregidas
+        // Crear la sesión
         const session = await prisma.classSession.create({
           data: {
             gymId: template.gymId,
             profId: template.profId,
             roomId: template.roomId,
             classTypeId: template.classTypeId,
-            startAt: correctedStartAt,
-            endAt: correctedEndAt,
+            startAt: startAt,
+            endAt: endAt,
             capacity: template.capacity,
             status: 'PROGRAMADA'
           }
