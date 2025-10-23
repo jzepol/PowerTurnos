@@ -1384,7 +1384,7 @@ export default function ProfesorDashboard() {
                </div>
              </div>
 
-             {/* Alumnos Recientes */}
+             {/* Alumnos Recientes */}{/* 
              <div className="bg-white rounded-xl shadow-lg p-8">
                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
                  <svg className="w-6 h-6 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1440,7 +1440,7 @@ export default function ProfesorDashboard() {
                    </tbody>
                  </table>
                </div>
-             </div>
+             </div> */}
 
              {/* Tokens de Alumnos */}
              <div className="bg-white rounded-xl shadow-lg p-8">
