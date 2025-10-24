@@ -1136,7 +1136,7 @@ export default function ProfesorDashboard() {
                          </svg>
                          <span className="font-semibold text-gray-700">Días:</span>
                          <span className="ml-2 text-gray-600">{template.daysOfWeek.map((day: number) => 
-                           ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][day - 1]
+                           ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][day]
                          ).join(', ')}</span>
                        </div>
                        <div className="flex items-center">
@@ -2422,37 +2422,74 @@ export default function ProfesorDashboard() {
                 >
                   Cerrar
                 </button>
-                <button
-                  onClick={async () => {
-                    if (confirm('¿Estás seguro de que quieres cancelar esta clase? Esta acción no se puede deshacer y se reembolsarán los tokens a todos los alumnos reservados.')) {
-                      try {
-                        const response = await fetch(`/api/sessions/${selectedClass.id}/cancel`, {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json'
+                <div className="flex space-x-3">
+                  <button
+                    onClick={async () => {
+                      if (confirm('¿Estás seguro de que quieres cancelar esta clase? Esta acción no se puede deshacer y se reembolsarán los tokens a todos los alumnos reservados.')) {
+                        try {
+                          const response = await fetch(`/api/sessions/${selectedClass.id}/cancel`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            }
+                          })
+                          
+                          const result = await response.json()
+                          
+                          if (result.success) {
+                            setSuccessMessage(result.message)
+                            setShowClassDetailsModal(false)
+                            // Recargar datos del dashboard
+                            fetchDashboardData()
+                          } else {
+                            setError(result.error || 'Error al cancelar la clase')
                           }
-                        })
-                        
-                        const result = await response.json()
-                        
-                        if (result.success) {
-                          setSuccessMessage(result.message)
-                          setShowClassDetailsModal(false)
-                          // Recargar datos del dashboard
-                          fetchDashboardData()
-                        } else {
-                          setError(result.error || 'Error al cancelar la clase')
+                        } catch (error) {
+                          console.error('Error al cancelar clase:', error)
+                          setError('Error interno al cancelar la clase')
                         }
-                      } catch (error) {
-                        console.error('Error al cancelar clase:', error)
-                        setError('Error interno al cancelar la clase')
                       }
-                    }
-                  }}
-                  className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-                >
-                  Cancelar Clase
-                </button>
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                  >
+                    Cancelar Clase
+                  </button>
+                  
+                  {/* Botón de eliminar solo si no hay reservas activas */}
+                  {classBookings.filter(booking => ['RESERVADA', 'ASISTIO'].includes(booking.status)).length === 0 && (
+                    <button
+                      onClick={async () => {
+                        if (confirm('¿Estás seguro de que quieres eliminar permanentemente esta clase? Esta acción no se puede deshacer.')) {
+                          try {
+                            const response = await fetch(`/api/sessions/${selectedClass.id}/delete`, {
+                              method: 'DELETE',
+                              headers: {
+                                'Content-Type': 'application/json'
+                              }
+                            })
+                            
+                            const result = await response.json()
+                            
+                            if (result.success) {
+                              setSuccessMessage(result.message)
+                              setShowClassDetailsModal(false)
+                              // Recargar datos del dashboard
+                              fetchDashboardData()
+                            } else {
+                              setError(result.error || 'Error al eliminar la clase')
+                            }
+                          } catch (error) {
+                            console.error('Error al eliminar clase:', error)
+                            setError('Error interno al eliminar la clase')
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 transition-colors"
+                    >
+                      Eliminar Clase
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
