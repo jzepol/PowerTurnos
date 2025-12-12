@@ -30,8 +30,12 @@ export const POST = withRole(['ADMIN', 'PROFESOR'])(async (request: NextRequest,
     }
 
     // Calcular fecha de expiración por defecto (30 días) si no se proporciona
-    let finalExpiresAt = expiresAt
-    if (!finalExpiresAt) {
+    let finalExpiresAt: Date | undefined
+    if (expiresAt) {
+      // Convertir string a Date si es necesario
+      finalExpiresAt = expiresAt instanceof Date ? expiresAt : new Date(expiresAt)
+    } else {
+      // Si no se proporciona, usar fecha actual + 30 días
       finalExpiresAt = new Date()
       finalExpiresAt.setDate(finalExpiresAt.getDate() + 30)
     }

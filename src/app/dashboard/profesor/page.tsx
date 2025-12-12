@@ -596,6 +596,10 @@ export default function ProfesorDashboard() {
       if (response.ok) {
         setShowAssignTokens(false)
         setError('')
+        // Actualizar la lista de tokens de alumnos
+        if (selectedGymId) {
+          fetchStudentTokens(selectedGymId)
+        }
       } else {
         const errorData = await response.json()
         setError(errorData.error || 'Error al asignar tokens')
@@ -1479,15 +1483,67 @@ export default function ProfesorDashboard() {
                        </tr>
                      </thead>
                      <tbody className="bg-white divide-y divide-gray-200">
-                       {studentTokens.map(student => {
-                         const wallet = student.wallet
-                         const grants = wallet?.grants || []
-                         const nextExpiry = grants.length > 0 ? grants.reduce((latest: any, grant: any) => {
-                           return !latest || (grant.expiresAt && new Date(grant.expiresAt) < new Date(latest.expiresAt)) ? grant : latest
-                         }, null) : null
-                         
-                         const isExpiringSoon = nextExpiry && new Date(nextExpiry.expiresAt) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 días
-                         const isExpired = nextExpiry && new Date(nextExpiry.expiresAt) <= new Date()
+                       {studentTokens
+                         .map(student => {
+                           const wallet = student.wallet
+                           const grants = wallet?.grants || []
+                           
+                           // Calcular balance disponible: solo tokens NO vencidos
+                           const now = new Date()
+                           const availableBalance = grants
+                             .filter((grant: any) => {
+                               // Incluir solo grants que no han expirado (expiresAt es null o es mayor a ahora)
+                               return !grant.expiresAt || new Date(grant.expiresAt) > now
+                             })
+                             .reduce((sum: number, grant: any) => sum + grant.tokens, 0)
+                           
+                           // Buscar el próximo vencimiento entre los tokens ACTIVOS (no vencidos) - prioridad
+                           const nextActiveExpiry = grants.find((grant: any) => {
+                             if (!grant.expiresAt) return false
+                             return new Date(grant.expiresAt) > now
+                           }) || null
+                           
+                           // Si no hay activos, buscar el último vencido para mostrar
+                           const lastExpired = !nextActiveExpiry ? grants.find((grant: any) => grant.expiresAt !== null) || null : null
+                           
+                           // Usar el próximo activo si existe, sino el último vencido
+                           const nextExpiry = nextActiveExpiry || lastExpired
+                           
+                           // Verificar si vence pronto (dentro de 7 días) - solo entre los activos
+                           const isExpiringSoon = nextActiveExpiry?.expiresAt && 
+                             new Date(nextActiveExpiry.expiresAt) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                           
+                           // Verificar si está vencido (no hay tokens activos o el próximo vencimiento ya pasó)
+                           const isExpired = availableBalance === 0 || (nextExpiry?.expiresAt && new Date(nextExpiry.expiresAt) <= now && !nextActiveExpiry)
+                           
+                           // Calcular prioridad para ordenamiento: 1 = Activo, 2 = Vence pronto, 3 = Vencido
+                           let sortPriority = 3 // Vencido por defecto
+                           if (availableBalance > 0 && !isExpired && !isExpiringSoon) {
+                             sortPriority = 1 // Activo
+                           } else if (isExpiringSoon && availableBalance > 0) {
+                             sortPriority = 2 // Vence pronto
+                           }
+                           
+                           return {
+                             ...student,
+                             availableBalance,
+                             nextExpiry,
+                             isExpiringSoon,
+                             isExpired,
+                             sortPriority,
+                             grants
+                           }
+                         })
+                         .sort((a, b) => {
+                           // Ordenar por prioridad: Activos primero, luego vence pronto, luego vencidos
+                           if (a.sortPriority !== b.sortPriority) {
+                             return a.sortPriority - b.sortPriority
+                           }
+                           // Si tienen la misma prioridad, ordenar alfabéticamente por nombre
+                           return a.name.localeCompare(b.name)
+                         })
+                         .map(student => {
+                           const { availableBalance, nextExpiry, isExpiringSoon, isExpired, grants } = student
                          
                          return (
                            <tr key={student.id} className="hover:bg-gray-50 transition-colors duration-200">
@@ -1504,7 +1560,7 @@ export default function ProfesorDashboard() {
                              </td>
                              <td className="px-6 py-4 whitespace-nowrap">
                                <div className="text-2xl font-bold text-gray-900">
-                                 {wallet?.balance || 0}
+                                 {availableBalance}
                                </div>
                                <div className="text-xs text-gray-500">
                                  {grants.length > 0 ? `${grants.length} asignaciones` : 'Sin tokens'}
@@ -1513,7 +1569,7 @@ export default function ProfesorDashboard() {
                              <td className="px-6 py-4 whitespace-nowrap">
                                {nextExpiry ? (
                                  <div>
-                                   <div className={`text-sm font-semibold ${isExpired ? 'text-red-600' : isExpiringSoon ? 'text-orange-600' : 'text-gray-900'}`}>
+                                   <div className={`text-sm font-semibold ${isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-gray-900'}`}>
                                      {formatDate(nextExpiry.expiresAt)}
                                    </div>
                                    <div className="text-xs text-gray-500">
@@ -1526,14 +1582,14 @@ export default function ProfesorDashboard() {
                              </td>
                              <td className="px-6 py-4 whitespace-nowrap">
                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                 isExpired ? 'bg-red-100 text-red-800' :
-                                 isExpiringSoon ? 'bg-orange-100 text-orange-800' :
-                                 (wallet?.balance || 0) > 0 ? 'bg-green-100 text-green-800' :
+                                 isExpired && availableBalance === 0 ? 'bg-red-100 text-red-800' :
+                                 isExpiringSoon ? 'bg-amber-100 text-amber-800' :
+                                 availableBalance > 0 ? 'bg-green-100 text-green-800' :
                                  'bg-gray-100 text-gray-800'
                                }`}>
-                                 {isExpired ? 'Vencido' :
+                                 {isExpired && availableBalance === 0 ? 'Vencido' :
                                   isExpiringSoon ? 'Vence pronto' :
-                                  (wallet?.balance || 0) > 0 ? 'Activo' : 'Sin tokens'}
+                                  availableBalance > 0 ? 'Activo' : 'Sin tokens'}
                                </span>
                              </td>
                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -2116,10 +2172,21 @@ export default function ProfesorDashboard() {
               <form onSubmit={(e) => {
                 e.preventDefault()
                 const formData = new FormData(e.currentTarget)
+                const assignmentDateStr = formData.get('assignmentDate') as string
+                
+                // Si se proporciona una fecha de asignación, calcular expiración desde esa fecha + 30 días
+                let expiresAt: Date | undefined
+                if (assignmentDateStr) {
+                  const assignmentDate = new Date(assignmentDateStr)
+                  expiresAt = new Date(assignmentDate)
+                  expiresAt.setDate(expiresAt.getDate() + 30)
+                }
+                
                 handleAssignTokens({
                   userId: formData.get('userId'),
                   tokens: parseInt(formData.get('tokens') as string),
-                  reason: formData.get('reason')
+                  reason: formData.get('reason'),
+                  expiresAt: expiresAt
                 })
               }}>
                 <div className="space-y-4">
@@ -2136,6 +2203,22 @@ export default function ProfesorDashboard() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Cantidad de Tokens</label>
                     <input type="number" name="tokens" min="1" max="100" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Fecha de Asignación
+                      <span className="text-xs text-gray-500 ml-1">(para calcular expiración correcta)</span>
+                    </label>
+                    <input 
+                      type="date" 
+                      name="assignmentDate" 
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Los tokens expirarán 30 días después de esta fecha
+                    </p>
                   </div>
                   
                   <div>

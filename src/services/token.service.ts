@@ -121,13 +121,20 @@ export class TokenService {
       })
     }
 
+    // Calcular fecha de expiración por defecto (30 días) si no se proporciona
+    let finalExpiresAt = data.expiresAt
+    if (!finalExpiresAt) {
+      finalExpiresAt = new Date()
+      finalExpiresAt.setDate(finalExpiresAt.getDate() + 30)
+    }
+
     // Crear concesión de tokens
     const tokenGrant = await prisma.tokenGrant.create({
       data: {
         walletId: wallet.id,
         tokens: data.tokens,
         source: data.source,
-        expiresAt: data.expiresAt
+        expiresAt: finalExpiresAt
       }
     })
 
@@ -153,7 +160,8 @@ export class TokenService {
           gymId: data.gymId,
           tokens: data.tokens,
           source: data.source,
-          reason: data.reason
+          reason: data.reason,
+          expiresAt: finalExpiresAt
         }
       }
     })

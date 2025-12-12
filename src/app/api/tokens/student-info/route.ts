@@ -35,6 +35,7 @@ export const GET = withRole(['ADMIN', 'PROFESOR'])(async (request: NextRequest, 
     }
 
     // Obtener wallet de tokens
+    // Incluir TODOS los grants (incluso expirados) para poder mostrar el próximo vencimiento correctamente
     const wallet = await prisma.tokenWallet.findUnique({
       where: {
         userId_gymId: {
@@ -44,13 +45,10 @@ export const GET = withRole(['ADMIN', 'PROFESOR'])(async (request: NextRequest, 
       },
       include: {
         grants: {
-          where: {
-            expiresAt: {
-              gte: new Date()
-            }
-          },
+          // Removemos el filtro de expiración para incluir todos los grants
+          // Esto permite mostrar la fecha de vencimiento incluso si ya expiró
           orderBy: {
-            createdAt: 'desc'
+            expiresAt: 'asc' // Ordenar por fecha de expiración ascendente
           }
         }
       }

@@ -647,11 +647,22 @@ export default function AdminDashboard() {
               <form onSubmit={(e) => {
                 e.preventDefault()
                 const formData = new FormData(e.currentTarget)
+                const assignmentDateStr = formData.get('assignmentDate') as string
+                
+                // Si se proporciona una fecha de asignación, calcular expiración desde esa fecha + 30 días
+                let expiresAt: Date | undefined
+                if (assignmentDateStr) {
+                  const assignmentDate = new Date(assignmentDateStr)
+                  expiresAt = new Date(assignmentDate)
+                  expiresAt.setDate(expiresAt.getDate() + 30)
+                }
+                
                 handleAssignTokens({
                   userId: formData.get('userId'),
                   gymId: formData.get('gymId'),
                   tokens: parseInt(formData.get('tokens') as string),
-                  reason: formData.get('reason')
+                  reason: formData.get('reason'),
+                  expiresAt: expiresAt
                 })
               }}>
                 <div className="space-y-4">
@@ -678,6 +689,22 @@ export default function AdminDashboard() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Cantidad de Tokens</label>
                     <input type="number" name="tokens" min="1" max="100" required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm form-input" />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Fecha de Asignación
+                      <span className="text-xs text-gray-500 ml-1">(para calcular expiración correcta)</span>
+                    </label>
+                    <input 
+                      type="date" 
+                      name="assignmentDate" 
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm form-input" 
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Los tokens expirarán 30 días después de esta fecha
+                    </p>
                   </div>
                   
                   <div>
